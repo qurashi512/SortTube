@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
@@ -89,7 +90,7 @@ fun FolderDetailScreen(
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
 
-            // ✅ إضافة الخلفية المتدرجة لضمان وضوح العناصر في الوضع الداكن[cite: 7, 9]
+            // الخلفية المتدرجة
             Canvas(modifier = Modifier.fillMaxSize()) {
                 drawRect(
                     brush = Brush.verticalGradient(
@@ -229,7 +230,7 @@ fun FolderDetailScreen(
                         ) {
                             PlaylistCard(
                                 playlist = playlist,
-                                onClick  = { viewModel.openPlaylist(playlist) }, // ✅ تشغيل يوتيوب[cite: 7]
+                                onClick  = { viewModel.openPlaylist(playlist) },
                                 modifier = Modifier.weight(1f),
                             )
 
@@ -295,6 +296,14 @@ fun AddItemsDialog(
     var selectedPlaylistIds by remember { mutableStateOf(setOf<String>()) }
     var tabIndex by remember { mutableIntStateOf(0) }
 
+    // ✅ إضافة حالة البحث
+    var searchQuery by remember { mutableStateOf("") }
+
+    // ✅ مسح نص البحث عند تغيير التبويبات
+    LaunchedEffect(tabIndex) {
+        searchQuery = ""
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Color(0xFF1A1A2E),
@@ -306,7 +315,7 @@ fun AddItemsDialog(
             )
         },
         text = {
-            Column(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
+            Column(modifier = Modifier.fillMaxWidth().heightIn(max = 450.dp)) {
                 TabRow(
                     selectedTabIndex = tabIndex,
                     containerColor = Color.Transparent,
@@ -325,11 +334,52 @@ fun AddItemsDialog(
                     )
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(8.dp))
+
+                // ✅ مربع البحث (يظهر دائماً ويتغير محتواه حسب التبويب)
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text(stringResource(R.string.search_hint), color = Color.White.copy(0.4f)) },
+                    leadingIcon = { Icon(Icons.Rounded.Search, null, tint = Color.White.copy(0.5f)) },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Rounded.Clear, null, tint = Color.White.copy(0.5f))
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AccentPurple, unfocusedBorderColor = Color.White.copy(0.1f),
+                        focusedTextColor = Color.White, unfocusedTextColor = Color.White
+                    )
+                )
+
+                Spacer(Modifier.height(8.dp))
 
                 LazyColumn(modifier = Modifier.weight(1f)) {
                     if (tabIndex == 0) {
-                        items(availableChannels) { channel ->
+                        // ✅ فلترة القنوات
+                        item {
+                            val filteredChannels = if (searchQuery.isBlank()) availableChannels else availableChannels.filter { it.title.contains(searchQuery, ignoreCase = true) }
+
+                            // صف التحديد الذكي
+                            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Text("${selectedChannelIds.size}/${availableChannels.size} ${stringResource(R.string.selected_label)}", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(0.5f))
+                                val filteredIds = filteredChannels.map { it.id }.toSet()
+                                val allFilteredSelected = filteredIds.isNotEmpty() && selectedChannelIds.containsAll(filteredIds)
+
+                                TextButton(onClick = {
+                                    selectedChannelIds = if (allFilteredSelected) selectedChannelIds - filteredIds else selectedChannelIds + filteredIds
+                                }) { Text(if (allFilteredSelected) stringResource(R.string.deselect_all) else stringResource(R.string.select_all), color = AccentPurple, fontSize = 12.sp) }
+                            }
+                        }
+
+                        val filteredList = if (searchQuery.isBlank()) availableChannels else availableChannels.filter { it.title.contains(searchQuery, ignoreCase = true) }
+
+                        items(filteredList) { channel ->
                             val isSelected = selectedChannelIds.contains(channel.id)
                             ListItem(
                                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -355,8 +405,7 @@ fun AddItemsDialog(
                                     )
                                 },
                                 modifier = Modifier.clickable {
-                                    val checked = !isSelected
-                                    selectedChannelIds = if (checked) {
+                                    selectedChannelIds = if (!isSelected) {
                                         selectedChannelIds + channel.id
                                     } else {
                                         selectedChannelIds - channel.id
@@ -365,7 +414,25 @@ fun AddItemsDialog(
                             )
                         }
                     } else {
-                        items(availablePlaylists) { playlist ->
+                        // ✅ فلترة القوائم
+                        item {
+                            val filteredPlaylists = if (searchQuery.isBlank()) availablePlaylists else availablePlaylists.filter { it.title.contains(searchQuery, ignoreCase = true) }
+
+                            // صف التحديد الذكي
+                            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Text("${selectedPlaylistIds.size}/${availablePlaylists.size} ${stringResource(R.string.selected_label)}", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(0.5f))
+                                val filteredIds = filteredPlaylists.map { it.id }.toSet()
+                                val allFilteredSelected = filteredIds.isNotEmpty() && selectedPlaylistIds.containsAll(filteredIds)
+
+                                TextButton(onClick = {
+                                    selectedPlaylistIds = if (allFilteredSelected) selectedPlaylistIds - filteredIds else selectedPlaylistIds + filteredIds
+                                }) { Text(if (allFilteredSelected) stringResource(R.string.deselect_all) else stringResource(R.string.select_all), color = AccentPurple, fontSize = 12.sp) }
+                            }
+                        }
+
+                        val filteredList = if (searchQuery.isBlank()) availablePlaylists else availablePlaylists.filter { it.title.contains(searchQuery, ignoreCase = true) }
+
+                        items(filteredList) { playlist ->
                             val isSelected = selectedPlaylistIds.contains(playlist.id)
                             ListItem(
                                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -391,8 +458,7 @@ fun AddItemsDialog(
                                     )
                                 },
                                 modifier = Modifier.clickable {
-                                    val checked = !isSelected
-                                    selectedPlaylistIds = if (checked) {
+                                    selectedPlaylistIds = if (!isSelected) {
                                         selectedPlaylistIds + playlist.id
                                     } else {
                                         selectedPlaylistIds - playlist.id

@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.grieztech.ytorganizer.ui.viewmodel.HomeViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -39,6 +40,7 @@ import com.grieztech.ytorganizer.ui.viewmodel.LoginViewModel
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
     viewModel     : LoginViewModel = hiltViewModel(),
+    homeViewModel : HomeViewModel  = hiltViewModel(),
 ) {
     val context   = LocalContext.current
     val isLoading by viewModel.isLoading.collectAsState()
@@ -84,6 +86,9 @@ fun LoginScreen(
             val task    = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             val account = task.getResult(ApiException::class.java)
             viewModel.onGoogleSignInResult(account) {
+                // ✅ أبلغ HomeViewModel بالحساب الجديد
+                //    إذا تغيّر الحساب يمسح القديم، وإذا نفس الحساب تظهر المجلدات مباشرة
+                homeViewModel.onLoginSuccess(account?.id ?: "")
                 onLoginSuccess()
             }
         } catch (e: ApiException) {

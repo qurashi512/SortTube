@@ -28,6 +28,8 @@ import com.grieztech.ytorganizer.R
 import com.grieztech.ytorganizer.ui.components.GlassCard
 import com.grieztech.ytorganizer.ui.components.GlassTopBar
 import com.grieztech.ytorganizer.ui.theme.*
+import com.grieztech.ytorganizer.ui.viewmodel.HomeViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  GriezTech - Settings Screen  (FIXED – real switching)
@@ -38,6 +40,7 @@ fun SettingsScreen(
     onBack          : () -> Unit,
     onAboutClick    : () -> Unit,
     onLogout        : () -> Unit,
+    homeViewModel   : HomeViewModel = hiltViewModel(),
     onThemeChange   : (String) -> Unit,
     onLanguageChange: (String) -> Unit,
     currentTheme    : String = "system",
@@ -216,9 +219,13 @@ fun SettingsScreen(
                 Button(
                     onClick = {
                         showLogoutDialog = false
-                        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
-                        GoogleSignIn.getClient(context, gso).signOut().addOnCompleteListener {
-                            onLogout()
+                        // ✅ 1) امسح بيانات الحساب الحالي من قاعدة البيانات
+                        homeViewModel.logout {
+                            // ✅ 2) ثم سجّل خروج Google
+                            val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
+                            GoogleSignIn.getClient(context, gso).signOut().addOnCompleteListener {
+                                onLogout()
+                            }
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF4455)),

@@ -68,6 +68,9 @@ fun HomeScreen(
     var showAddDialog   by remember { mutableStateOf(false) }
     var showSyncOptions by remember { mutableStateOf(false) }
     var folderToDelete  by remember { mutableStateOf<Folder?>(null) }
+    // ✅ متغيرات حالة لتعديل المجلد
+    var folderToEdit    by remember { mutableStateOf<Folder?>(null) }
+
 
     Scaffold(
         snackbarHost   = { SnackbarHost(snackbarHostState) },
@@ -137,11 +140,27 @@ fun HomeScreen(
                         items(folders, key = { it.id }) { folder ->
                             ReorderableItem(reorderState, key = folder.id) { isDragging ->
                                 val elev by animateFloatAsState(if (isDragging) 8f else 0f, label = "elev")
-                                FolderCard(folder = folder, channelCount = channelCounts[folder.id] ?: 0,
-                                    isDragging = isDragging, onClick = { onFolderClick(folder) },
-                                    onLongPress = { folderToDelete = folder },
-                                    modifier = Modifier.detectReorderAfterLongPress(reorderState)
-                                        .graphicsLayer { shadowElevation = elev })
+                                // ✅ إضافة زر التعديل لبطاقة المجلد
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().detectReorderAfterLongPress(reorderState).graphicsLayer { shadowElevation = elev },
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        FolderCard(folder = folder, channelCount = channelCounts[folder.id] ?: 0,
+                                            isDragging = isDragging, onClick = { onFolderClick(folder) },
+                                            onLongPress = { folderToDelete = folder },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    // أيقونة التعديل بجوار المجلد
+                                    IconButton(
+                                        onClick = { folderToEdit = folder },
+                                        modifier = Modifier.background(Color.White.copy(0.05f), CircleShape).size(40.dp)
+                                    ) {
+                                        Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.edit), tint = Color.White.copy(0.7f), modifier = Modifier.size(20.dp))
+                                    }
+                                }
                             }
                         }
                     }
@@ -177,6 +196,18 @@ fun HomeScreen(
         )
     }
 
+    // ✅ استدعاء ديالوج تعديل المجلد
+    folderToEdit?.let { folder ->
+        EditFolderDialog(
+            folder = folder,
+            onConfirm = { updatedName, updatedEmoji ->
+                viewModel.updateFolder(folder.copy(name = updatedName, emoji = updatedEmoji))
+                folderToEdit = null
+            },
+            onDismiss = { folderToEdit = null }
+        )
+    }
+
     if (showAddDialog) {
         AddFolderDialog(
             allChannels   = allChannels,
@@ -198,6 +229,87 @@ fun HomeScreen(
         )
     }
 }
+
+// ✅ مكون جديد بالكامل: ديالوج تعديل المجلد
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun EditFolderDialog(
+    folder: Folder,
+    onConfirm: (String, String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var folderName by remember { mutableStateOf(folder.name) }
+    var selectedEmoji by remember { mutableStateOf(folder.emoji) }
+
+    // قائمة الإيموجي الموسعة التي طلبها المستخدم
+    val emojis = listOf(
+        "📁","🎵","🎮","📚","🏋️","🍳","✈️","💻","🎬","🔬","📰","🎨",
+        "🌍","📈","📖","⚽","🏀","🍔","🍕","🚗","🚀","🔥","✨","💡"
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor   = Color(0xFF1A1A2E), // خلفية زجاجية غامقة
+        shape            = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+        title = {
+            Text(stringResource(R.string.edit_folder), style = MaterialTheme.typography.titleLarge, color = Color.White)
+        },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+
+                // تعديل الاسم
+                OutlinedTextField(
+                    value = folderName,
+                    onValueChange = { folderName = it },
+                    label = { Text(stringResource(R.string.folder_name), color = Color.White.copy(0.6f)) },
+                    leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null, tint = Color.White.copy(0.5f)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White, unfocusedTextColor = Color.White,
+                        focusedBorderColor = AccentBlue, unfocusedBorderColor = Color.White.copy(0.2f)
+                    )
+                )
+
+                // تعديل الإيموجي
+                Text(stringResource(R.string.choose_emoji), style = MaterialTheme.typography.labelMedium, color = Color.White.copy(0.7f))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    emojis.forEach { emoji ->
+                        FilterChip(
+                            selected = emoji == selectedEmoji,
+                            onClick = { selectedEmoji = emoji },
+                            label = { Text(emoji, fontSize = 20.sp) }, // تكبير الإيموجي قليلاً
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = AccentBlue.copy(0.35f), // لون التحديد أزرق متناسق
+                                containerColor = Color.White.copy(0.06f)
+                            )
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.cancel), color = Color.White.copy(0.6f))
+                }
+                Button(
+                    onClick = {
+                        if (folderName.isNotBlank()) {
+                            onConfirm(folderName.trim(), selectedEmoji)
+                        }
+                    },
+                    colors  = ButtonDefaults.buttonColors(containerColor = AccentBlue),
+                    enabled = folderName.isNotBlank(),
+                ) {
+                    Text(stringResource(R.string.save))
+                }
+            }
+        },
+        dismissButton = {}
+    )
+}
+
 
 @Composable
 private fun SyncOptionsDialog(onDismiss: () -> Unit, onSyncSubscriptions: () -> Unit,
@@ -260,10 +372,19 @@ private fun AddFolderDialog(
     var selectedChannels  by remember { mutableStateOf(setOf<String>()) }
     var selectedPlaylists by remember { mutableStateOf(setOf<String>()) }
     var currentTab        by remember { mutableStateOf(0) }
+
+    // ✅ إضافة حالة البحث
+    var searchQuery       by remember { mutableStateOf("") }
+
     val errorMsg = externalError
 
-    val emojis = listOf("📁","🎵","🎮","📚","🏋️","🍳","✈️","💻","🎬","🔬","📰","🎨")
+    val emojis = listOf("📁","🎵","🎮","📚","🏋️","🍳","✈️","💻","🎬","🔬","📰","🎨", "🌍","📈","📖","⚽","🏀","🍔","🍕","🚗","🚀","🔥","✨","💡")
     val colors = listOf("#FF4444","#FF8800","#FFCC00","#44CC88","#4488FF","#8855FF","#FF44AA","#00CCBB")
+
+    // ✅ تفريغ مربع البحث عند التنقل بين التبويبات
+    LaunchedEffect(currentTab) {
+        searchQuery = ""
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -351,17 +472,47 @@ private fun AddFolderDialog(
                         }
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+
+                            // ✅ إضافة مربع البحث للقنوات
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                placeholder = { Text(stringResource(R.string.search_hint), color = Color.White.copy(0.4f)) },
+                                leadingIcon = { Icon(Icons.Rounded.Search, null, tint = Color.White.copy(0.5f)) },
+                                trailingIcon = {
+                                    if (searchQuery.isNotEmpty()) {
+                                        IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Rounded.Clear, null, tint = Color.White.copy(0.5f)) }
+                                    }
+                                },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = AccentBlue, unfocusedBorderColor = Color.White.copy(0.1f),
+                                    focusedTextColor = Color.White, unfocusedTextColor = Color.White
+                                )
+                            )
+
+                            // ✅ فلترة القنوات بناءً على البحث
+                            val filteredChannels = remember(searchQuery, allChannels) {
+                                if (searchQuery.isBlank()) allChannels
+                                else allChannels.filter { it.title.contains(searchQuery, ignoreCase = true) }
+                            }
+
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically) {
                                 Text("${selectedChannels.size}/${allChannels.size} ${stringResource(R.string.selected_label)}",
                                     style = MaterialTheme.typography.bodySmall, color = Color.White.copy(0.5f))
+
+                                // ✅ زر تحديد الكل مفلتر بذكاء
+                                val filteredIds = filteredChannels.map { it.id }.toSet()
+                                val allFilteredSelected = filteredIds.isNotEmpty() && selectedChannels.containsAll(filteredIds)
+
                                 TextButton(onClick = {
-                                    selectedChannels = if (selectedChannels.size == allChannels.size) emptySet()
-                                    else allChannels.map { it.id }.toSet()
-                                }) { Text(if (selectedChannels.size == allChannels.size) stringResource(R.string.deselect_all) else stringResource(R.string.select_all), color = AccentPurple, fontSize = 12.sp) }
+                                    selectedChannels = if (allFilteredSelected) selectedChannels - filteredIds else selectedChannels + filteredIds
+                                }) { Text(if (allFilteredSelected) stringResource(R.string.deselect_all) else stringResource(R.string.select_all), color = AccentPurple, fontSize = 12.sp) }
                             }
-                            LazyColumn(modifier = Modifier.heightIn(max = 340.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                items(allChannels, key = { it.id }) { ch ->
+                            LazyColumn(modifier = Modifier.heightIn(max = 280.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                items(filteredChannels, key = { it.id }) { ch -> // ✅ عرض القنوات المفلترة فقط
                                     val sel = ch.id in selectedChannels
                                     SelectableItem(ch.title, "${ch.subscriberCount} ${stringResource(R.string.subscriber_word)}", sel, AccentBlue) {
                                         selectedChannels = if (sel) selectedChannels - ch.id else selectedChannels + ch.id
@@ -380,17 +531,46 @@ private fun AddFolderDialog(
                         }
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+
+                            // ✅ إضافة مربع البحث للقوائم
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                placeholder = { Text(stringResource(R.string.search_hint), color = Color.White.copy(0.4f)) },
+                                leadingIcon = { Icon(Icons.Rounded.Search, null, tint = Color.White.copy(0.5f)) },
+                                trailingIcon = {
+                                    if (searchQuery.isNotEmpty()) {
+                                        IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Rounded.Clear, null, tint = Color.White.copy(0.5f)) }
+                                    }
+                                },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = AccentTeal, unfocusedBorderColor = Color.White.copy(0.1f),
+                                    focusedTextColor = Color.White, unfocusedTextColor = Color.White
+                                )
+                            )
+
+                            // ✅ فلترة القوائم بناءً على البحث
+                            val filteredPlaylists = remember(searchQuery, allPlaylists) {
+                                if (searchQuery.isBlank()) allPlaylists
+                                else allPlaylists.filter { it.title.contains(searchQuery, ignoreCase = true) }
+                            }
+
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically) {
                                 Text("${selectedPlaylists.size}/${allPlaylists.size} ${stringResource(R.string.selected_label)}",
                                     style = MaterialTheme.typography.bodySmall, color = Color.White.copy(0.5f))
+
+                                val filteredIds = filteredPlaylists.map { it.id }.toSet()
+                                val allFilteredSelected = filteredIds.isNotEmpty() && selectedPlaylists.containsAll(filteredIds)
+
                                 TextButton(onClick = {
-                                    selectedPlaylists = if (selectedPlaylists.size == allPlaylists.size) emptySet()
-                                    else allPlaylists.map { it.id }.toSet()
-                                }) { Text(if (selectedPlaylists.size == allPlaylists.size) stringResource(R.string.deselect_all) else stringResource(R.string.select_all), color = AccentTeal, fontSize = 12.sp) }
+                                    selectedPlaylists = if (allFilteredSelected) selectedPlaylists - filteredIds else selectedPlaylists + filteredIds
+                                }) { Text(if (allFilteredSelected) stringResource(R.string.deselect_all) else stringResource(R.string.select_all), color = AccentTeal, fontSize = 12.sp) }
                             }
-                            LazyColumn(modifier = Modifier.heightIn(max = 340.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                items(allPlaylists, key = { it.id }) { pl ->
+                            LazyColumn(modifier = Modifier.heightIn(max = 280.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                items(filteredPlaylists, key = { it.id }) { pl -> // ✅ عرض القوائم المفلترة فقط
                                     val sel = pl.id in selectedPlaylists
                                     SelectableItem(pl.title, "${pl.itemCount} ${stringResource(R.string.video_word)} • ${pl.channelTitle}", sel, AccentTeal) {
                                         selectedPlaylists = if (sel) selectedPlaylists - pl.id else selectedPlaylists + pl.id
@@ -405,23 +585,15 @@ private fun AddFolderDialog(
         confirmButton = {
             Column(horizontalAlignment = Alignment.End) {
                 if (!errorMsg.isNullOrBlank()) {
-                    Text(
-                        text  = errorMsg,
-                        color = Color(0xFFFF6060),
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(bottom = 6.dp, end = 4.dp),
-                    )
+                    Text(text = errorMsg, color = Color(0xFFFF6060), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 6.dp, end = 4.dp))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = onDismiss) {
-                        Text(stringResource(R.string.cancel), color = Color.White.copy(0.6f))
-                    }
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel), color = Color.White.copy(0.6f)) }
                     Button(
                         onClick = {
                             onClearError()
                             if (folderName.isNotBlank())
-                                onConfirm(folderName.trim(), selectedEmoji, selectedColor,
-                                    selectedChannels.toList(), selectedPlaylists.toList())
+                                onConfirm(folderName.trim(), selectedEmoji, selectedColor, selectedChannels.toList(), selectedPlaylists.toList())
                         },
                         colors  = ButtonDefaults.buttonColors(containerColor = AccentPurple),
                         enabled = folderName.isNotBlank(),

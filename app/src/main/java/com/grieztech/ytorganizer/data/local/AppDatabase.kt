@@ -6,17 +6,18 @@ import com.grieztech.ytorganizer.models.Folder
 import com.grieztech.ytorganizer.models.Playlist
 import kotlinx.coroutines.flow.Flow
 
-// ═══════════════════════════════════════
-//  GriezTech - Local Database (Room)
-//  قاعدة البيانات المحلية
-// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+//  GriezTech - Local Database
+//  ✅ FIX: كل query مُقيَّدة بـ accountId
+// ═══════════════════════════════════════════════════════════════════════════
 
-// ── DAO للمجلدات ──
+// ── DAO للمجلدات ──────────────────────────────────────────────────────────
 @Dao
 interface FolderDao {
 
-    @Query("SELECT * FROM folders ORDER BY position ASC")
-    fun getAllFolders(): Flow<List<Folder>>
+    // ✅ فقط مجلدات الحساب الحالي
+    @Query("SELECT * FROM folders WHERE accountId = :accountId ORDER BY position ASC")
+    fun getFoldersForAccount(accountId: String): Flow<List<Folder>>
 
     @Query("SELECT * FROM folders WHERE id = :id")
     suspend fun getFolderById(id: Long): Folder?
@@ -33,49 +34,33 @@ interface FolderDao {
     @Query("UPDATE folders SET position = :position WHERE id = :id")
     suspend fun updateFolderPosition(id: Long, position: Int)
 
-    // تحديث مواضع متعددة دفعةً واحدة
     @Transaction
     suspend fun updatePositions(folders: List<Folder>) {
-        folders.forEachIndexed { index, folder ->
-            updateFolderPosition(folder.id, index)
-        }
+        folders.forEachIndexed { index, folder -> updateFolderPosition(folder.id, index) }
     }
 
-    @Query("SELECT COUNT(*) FROM folders")
-    suspend fun getFolderCount(): Int
+    @Query("SELECT COUNT(*) FROM folders WHERE accountId = :accountId")
+    suspend fun getFolderCountForAccount(accountId: String): Int
 
-    // ✅ التحقق من وجود مجلد بنفس الاسم (غير حساس لحالة الأحرف)
-    @Query("SELECT * FROM folders WHERE LOWER(name) = LOWER(:name) LIMIT 1")
-    suspend fun getFolderByName(name: String): Folder?
-
-    // ✅ إنشاء مجلد ونقل القنوات/القوائم في transaction واحدة ذرية
-    @Transaction
-    suspend fun createFolderAndMoveItems(
-        folder     : Folder,
-        channelDao : ChannelDao,
-        playlistDao: PlaylistDao,
-        channelIds : List<String>,
-        playlistIds: List<String>,
-    ): Long {
-        val folderId = insertFolder(folder)
-        channelIds.forEachIndexed  { idx, id -> channelDao.moveChannel(id, folderId, idx) }
-        playlistIds.forEachIndexed { idx, id -> playlistDao.movePlaylist(id, folderId, idx) }
-        return folderId
-    }
+    // ✅ حذف كل بيانات حساب معين عند تسجيل الخروج
+    @Query("DELETE FROM folders WHERE accountId = :accountId")
+    suspend fun deleteAllForAccount(accountId: String)
 }
 
-// ── DAO للقنوات ──
+// ── DAO للقنوات ───────────────────────────────────────────────────────────
 @Dao
 interface ChannelDao {
 
-    @Query("SELECT * FROM channels WHERE folderId = :folderId ORDER BY position ASC")
-    fun getChannelsInFolder(folderId: Long): Flow<List<Channel>>
+    // ✅ فقط قنوات المجلد + الحساب
+    @Query("SELECT * FROM channels WHERE folderId = :folderId AND accountId = :accountId ORDER BY position ASC")
+    fun getChannelsInFolder(folderId: Long, accountId: String): Flow<List<Channel>>
 
-    @Query("SELECT * FROM channels ORDER BY position ASC")
-    fun getAllChannels(): Flow<List<Channel>>
+    // ✅ كل قنوات الحساب
+    @Query("SELECT * FROM channels WHERE accountId = :accountId ORDER BY position ASC")
+    fun getAllChannelsForAccount(accountId: String): Flow<List<Channel>>
 
-    @Query("SELECT * FROM channels WHERE id = :id")
-    suspend fun getChannelById(id: String): Channel?
+    @Query("SELECT * FROM channels WHERE id = :id AND accountId = :accountId")
+    suspend fun getChannelById(id: String, accountId: String): Channel?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertChannel(channel: Channel)
@@ -89,25 +74,32 @@ interface ChannelDao {
     @Delete
     suspend fun deleteChannel(channel: Channel)
 
-    @Query("DELETE FROM channels WHERE folderId = :folderId")
-    suspend fun deleteChannelsInFolder(folderId: Long)
+    @Query("DELETE FROM channels WHERE folderId = :folderId AND accountId = :accountId")
+    suspend fun deleteChannelsInFolder(folderId: Long, accountId: String)
 
-    @Query("UPDATE channels SET folderId = :newFolderId, position = :position WHERE id = :channelId")
-    suspend fun moveChannel(channelId: String, newFolderId: Long, position: Int)
+    @Query("UPDATE channels SET folderId = :newFolderId, position = :position WHERE id = :channelId AND accountId = :accountId")
+    suspend fun moveChannel(channelId: String, newFolderId: Long, position: Int, accountId: String)
 
-    @Query("UPDATE channels SET position = :position WHERE id = :id")
-    suspend fun updateChannelPosition(id: String, position: Int)
+    @Query("UPDATE channels SET position = :position WHERE id = :id AND accountId = :accountId")
+    suspend fun updateChannelPosition(id: String, position: Int, accountId: String)
 
-    @Query("SELECT COUNT(*) FROM channels WHERE folderId = :folderId")
-    suspend fun getChannelCountInFolder(folderId: Long): Int
+    @Query("SELECT COUNT(*) FROM channels WHERE folderId = :folderId AND accountId = :accountId")
+    suspend fun getChannelCountInFolder(folderId: Long, accountId: String): Int
+
+    // ✅ حذف كل قنوات حساب عند تسجيل الخروج
+    @Query("DELETE FROM channels WHERE accountId = :accountId")
+    suspend fun deleteAllForAccount(accountId: String)
 }
 
-// ── DAO لقوائم التشغيل ──
+// ── DAO لقوائم التشغيل ────────────────────────────────────────────────────
 @Dao
 interface PlaylistDao {
 
-    @Query("SELECT * FROM playlists WHERE folderId = :folderId ORDER BY position ASC")
-    fun getPlaylistsInFolder(folderId: Long): Flow<List<Playlist>>
+    @Query("SELECT * FROM playlists WHERE folderId = :folderId AND accountId = :accountId ORDER BY position ASC")
+    fun getPlaylistsInFolder(folderId: Long, accountId: String): Flow<List<Playlist>>
+
+    @Query("SELECT * FROM playlists WHERE accountId = :accountId ORDER BY position ASC")
+    fun getAllPlaylistsForAccount(accountId: String): Flow<List<Playlist>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPlaylist(playlist: Playlist)
@@ -118,22 +110,23 @@ interface PlaylistDao {
     @Delete
     suspend fun deletePlaylist(playlist: Playlist)
 
-    @Query("SELECT * FROM playlists ORDER BY position ASC")
-    fun getAllPlaylists(): Flow<List<Playlist>>
+    @Query("UPDATE playlists SET folderId = :newFolderId, position = :position WHERE id = :playlistId AND accountId = :accountId")
+    suspend fun movePlaylist(playlistId: String, newFolderId: Long, position: Int, accountId: String)
 
-    @Query("UPDATE playlists SET folderId = :newFolderId, position = :position WHERE id = :playlistId")
-    suspend fun movePlaylist(playlistId: String, newFolderId: Long, position: Int)
+    // ✅ حذف كل قوائم حساب
+    @Query("DELETE FROM playlists WHERE accountId = :accountId")
+    suspend fun deleteAllForAccount(accountId: String)
 }
 
-// ── قاعدة البيانات الرئيسية ──
+// ── قاعدة البيانات ────────────────────────────────────────────────────────
 @Database(
-    entities  = [Folder::class, Channel::class, Playlist::class],
-    version   = 1,
+    entities     = [Folder::class, Channel::class, Playlist::class],
+    version      = 2,           // ✅ رُفّع إلى 2 بسبب إضافة accountId
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun folderDao(): FolderDao
-    abstract fun channelDao(): ChannelDao
+    abstract fun folderDao()  : FolderDao
+    abstract fun channelDao() : ChannelDao
     abstract fun playlistDao(): PlaylistDao
 
     companion object {

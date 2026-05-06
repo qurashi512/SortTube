@@ -7,7 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*import androidx.compose.material3.*
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,9 +18,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.grieztech.ytorganizer.R
 import com.grieztech.ytorganizer.models.Channel
 import com.grieztech.ytorganizer.models.Folder
 import com.grieztech.ytorganizer.models.Playlist
@@ -105,7 +108,7 @@ fun FolderCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        text  = "$channelCount قناة",
+                        text  = "$channelCount ${stringResource(R.string.channel_word)}", // ✅ الترجمة هنا
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     )
@@ -167,7 +170,7 @@ fun ChannelCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text  = formatCount(channel.subscriberCount) + " مشترك",
+                    text  = "${formatCount(channel.subscriberCount)} ${stringResource(R.string.subscriber_word)}", // ✅ الترجمة هنا
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 )
@@ -281,7 +284,7 @@ fun PlaylistCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text  = "${playlist.itemCount} فيديو · ${playlist.channelTitle}",
+                    text  = "${playlist.itemCount} ${stringResource(R.string.video_word)} · ${playlist.channelTitle}", // ✅ الترجمة هنا
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     maxLines = 1,

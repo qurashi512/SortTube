@@ -74,5 +74,10 @@
     <string name="crafted_by_full">صُنع بـ ❤️ بواسطة Gorashe Mohamed</string>
     <string name="splash_subtitle">نظّم مقاطعك بأسلوب احترافي</string>
     <string name="splash_crafted_by">Crafted with ❤️ by Gorashe</string>
-
+    <string name="all_folder">الكل</string>
+    <string name="import_summary">قنوات: %1$d | قوائم: %2$d ✔</string>
+    <string name="search_hint">بحث</string>
+    <string name="edit">تعديل</string>
+    <string name="save">حفظ</string>
+    <string name="edit_folder">تعديل المجلد</string>
 </resources>
