@@ -13,3 +13,4 @@
 .externalNativeBuild
 .cxx
 local.properties
+app/client_secret_*.json
