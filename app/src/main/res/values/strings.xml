@@ -72,10 +72,35 @@
     <string name="crafted_by_full">Crafted with ❤️ by Gorashe Mohamed</string>
     <string name="splash_subtitle">Organize your clips professionally</string>
     <string name="splash_crafted_by">Crafted with ❤️ by Gorashe</string>
-    <string name="all_folder">All</string>
     <string name="import_summary">Channels: %1$d | Playlists: %2$d ✔</string>
-    <string name="search_hint">Search</string>
+    <string name="search_hint">Search…</string>
     <string name="edit">Edit</string>
     <string name="save">Save</string>
     <string name="edit_folder">Edit Folder</string>
+    <string name="folder_exists_error">A folder with this name already exists!</string>
+    <string name="all_folder">All Channels</string>
+    <string name="sync_channels_new">✓ Imported %1$d new channels</string>
+    <string name="sync_channels_empty">✓ No new channels</string>
+    <string name="sync_playlists_new">✓ Imported %1$d new playlists</string>
+    <string name="sync_playlists_empty">✓ No new playlists</string>
+    <string name="sync_all_success">✓ %1$d channels and %2$d playlists</string>
+    <string name="sync_error_msg">Import failed: %1$s</string>
+    <string name="sync_partial_error">Partial import failed, check connection</string>
+    <string name="folder_create_failed">Failed to create folder: %1$s</string>
+    <string name="delete_channel_title">Delete Channel?</string>
+    <string name="delete_playlist_title">Delete Playlist?</string>
+    <string name="remove_from_folder_desc">This will remove it from the folder. It cannot be undone.</string>
+    <string name="delete_channel_permanent_title">Delete Channel?</string>
+    <string name="delete_channel_permanent_desc">The channel will be deleted from the app permanently. This cannot be undone.</string>
+    <string name="remove_channel_folder_title">Remove Channel?</string>
+    <string name="remove_channel_folder_desc">The channel will be removed from this folder and returned to All Channels.</string>
+
+    <string name="delete_playlist_permanent_title">Delete Playlist?</string>
+    <string name="delete_playlist_permanent_desc">The playlist will be deleted from the app permanently. This cannot be undone.</string>
+    <string name="remove_playlist_folder_title">Remove Playlist?</string>
+    <string name="remove_playlist_folder_desc">The playlist will be removed from this folder and returned to All Channels.</string>
+
+    <string name="items_already_exist_warning">Some selected items are already in other folders (%1$s).\nDo you want to move them here?</string>
+    <string name="confirm_move_title">Confirm Move</string>
+    <string name="move_action">Move</string>
 </resources>

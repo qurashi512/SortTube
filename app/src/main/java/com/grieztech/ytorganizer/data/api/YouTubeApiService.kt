@@ -27,10 +27,15 @@ data class ResourceId(val kind: String = "", val channelId: String = "")
 
 data class YouTubeChannelsResponse(val items: List<ChannelItem> = emptyList())
 data class ChannelItem(
-    val id        : String = "",
-    val snippet   : ChannelSnippet = ChannelSnippet(),
-    val statistics: ChannelStatistics? = null,
+    val id            : String = "",
+    val snippet       : ChannelSnippet = ChannelSnippet(),
+    val statistics    : ChannelStatistics? = null,
+    val contentDetails: ChannelContentDetails? = null,  // ✅ لجلب uploadsPlaylistId
 )
+data class ChannelContentDetails(val relatedPlaylists: RelatedPlaylists = RelatedPlaylists())
+data class RelatedPlaylists(val uploads: String = "") {
+    val uploadsPlaylistId: String get() = uploads
+}
 data class ChannelSnippet(
     val title      : String     = "",
     val description: String     = "",
@@ -123,15 +128,31 @@ interface YouTubeApiService {
         @Query("pageToken")  pageToken : String? = null,
     ): YouTubePlaylistsResponse
 
-    // فيديوهات قناة
-    @GET("search")
+    // فيديوهات قناة — videos.list بدل search.list (1 وحدة بدل 100) ✅
+    @GET("videos")
     suspend fun getChannelVideos(
         @Header("Authorization") authorization: String,
         @Query("part")       part      : String = "snippet",
-        @Query("channelId")  channelId : String,
-        @Query("type")       type      : String = "video",
-        @Query("order")      order     : String = "date",
+        @Query("chart")      chart     : String = "mostPopular",
+        @Query("videoCategoryId") categoryId: String = "",
         @Query("maxResults") maxResults: Int    = 10,
+    ): YouTubeVideosResponse
+
+    // جلب آخر فيديوهات قناة عبر playlistId (uploads playlist) ✅
+    @GET("channels")
+    suspend fun getChannelUploadsPlaylistId(
+        @Header("Authorization") authorization: String,
+        @Query("part") part: String = "contentDetails",
+        @Query("id")   id  : String,
+    ): YouTubeChannelsResponse
+
+    @GET("playlistItems")
+    suspend fun getUploadsPlaylistItems(
+        @Header("Authorization") authorization: String,
+        @Query("part")       part      : String  = "snippet",
+        @Query("playlistId") playlistId: String,
+        @Query("maxResults") maxResults: Int     = 10,
+        @Query("pageToken")  pageToken : String? = null,
     ): YouTubeVideosResponse
 
     // فيديوهات قائمة تشغيل

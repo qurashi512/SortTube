@@ -3,26 +3,35 @@ package com.grieztech.ytorganizer.ui.screens
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.*
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.grieztech.ytorganizer.R
 import com.grieztech.ytorganizer.models.Channel
 import com.grieztech.ytorganizer.models.Folder
@@ -32,14 +41,30 @@ import com.grieztech.ytorganizer.ui.theme.*
 import com.grieztech.ytorganizer.ui.viewmodel.HomeViewModel
 import org.burnoutcrew.reorderable.*
 
+// كلاس مساعد لحفظ بيانات المجلد المؤقتة قبل التأكيد
+data class PendingFolder(
+    val name: String, val emoji: String, val color: String,
+    val chIds: List<String>, val plIds: List<String>
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onFolderClick  : (Folder) -> Unit,
     onSettingsClick: () -> Unit,
+    onLogoutSuccess: () -> Unit = {},
     viewModel      : HomeViewModel = hiltViewModel(),
 ) {
     val context       = LocalContext.current
-    val folders       by viewModel.folders.collectAsState()
+
+    val rawFolders    by viewModel.folders.collectAsState()
+    val allFolderStr  = stringResource(id = R.string.all_folder)
+    val folders       = remember(rawFolders, allFolderStr) {
+        rawFolders.map {
+            if (it.name.equals("All Channels", ignoreCase = true)) it.copy(name = allFolderStr) else it
+        }
+    }
+
     val channelCounts by viewModel.channelCounts.collectAsState()
     val isSyncing     by viewModel.isSyncing.collectAsState()
     val syncError     by viewModel.syncError.collectAsState()
@@ -47,11 +72,30 @@ fun HomeScreen(
     val allChannels   by viewModel.allChannels.collectAsState()
     val allPlaylists  by viewModel.allPlaylists.collectAsState()
     val folderError   by viewModel.folderCreateError.collectAsState()
+
+    val totalFolders   by viewModel.totalFoldersCount.collectAsState()
+    val totalChannels  by viewModel.totalChannelsCount.collectAsState()
+    val totalPlaylists by viewModel.totalPlaylistsCount.collectAsState()
+
+    // ✅ Remote Config — رسالة الإشعار
+    val noticeMessage  by viewModel.noticeMessage.collectAsState()
+
     val snackbarHostState = remember { SnackbarHostState() }
+
+    var mainSearchQuery by remember { mutableStateOf("") }
+    val filteredFolders = remember(folders, mainSearchQuery) {
+        if (mainSearchQuery.isBlank()) folders
+        else folders.filter { it.name.contains(mainSearchQuery, ignoreCase = true) }
+    }
 
     val account     = remember { GoogleSignIn.getLastSignedInAccount(context) }
     val displayName = account?.displayName ?: account?.email ?: "GriezTech"
     val userEmail   = account?.email ?: ""
+    val photoUrl    = account?.photoUrl
+
+    val googleSignInClient = remember {
+        GoogleSignIn.getClient(context, GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).requestEmail().build())
+    }
 
     LaunchedEffect(syncError) {
         syncError?.let { snackbarHostState.showSnackbar(it, duration = SnackbarDuration.Long); viewModel.clearError() }
@@ -68,99 +112,141 @@ fun HomeScreen(
     var showAddDialog   by remember { mutableStateOf(false) }
     var showSyncOptions by remember { mutableStateOf(false) }
     var folderToDelete  by remember { mutableStateOf<Folder?>(null) }
-    // ✅ متغيرات حالة لتعديل المجلد
     var folderToEdit    by remember { mutableStateOf<Folder?>(null) }
+    var showUserMenu    by remember { mutableStateOf(false) }
 
+    // ✅ متغيرات نافذة التحذير الذكية
+    var moveWarningMessage by remember { mutableStateOf("") }
+    var pendingFolder by remember { mutableStateOf<PendingFolder?>(null) }
 
-    Scaffold(
-        snackbarHost   = { SnackbarHost(snackbarHostState) },
-        containerColor = Color.Transparent,
-        floatingActionButton = {
-            GlassFAB(onClick = { showAddDialog = true }, icon = Icons.Rounded.CreateNewFolder,
-                label = stringResource(R.string.new_folder), modifier = Modifier.navigationBarsPadding())
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawRect(brush = Brush.radialGradient(
+                colors = listOf(GradientEnd.copy(alpha = 0.95f), GradientStart, GradientMid),
+                center = Offset(size.width * 0.3f, size.height * 0.2f), radius = size.width * 1.2f))
         }
-    ) { _ ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-                drawRect(brush = Brush.radialGradient(
-                    colors = listOf(GradientEnd.copy(alpha = 0.95f), GradientStart, GradientMid),
-                    center = Offset(size.width * 0.3f, size.height * 0.2f), radius = size.width * 1.2f))
-                drawCircle(color = AccentPurple.copy(alpha = 0.20f), radius = size.width * 0.55f,
-                    center = Offset(size.width * 0.85f, size.height * 0.12f))
-                drawCircle(color = YouTubeRed.copy(alpha = 0.12f), radius = size.width * 0.45f,
-                    center = Offset(size.width * 0.1f, size.height * 0.72f))
+
+        Scaffold(
+            snackbarHost   = { SnackbarHost(snackbarHostState) },
+            containerColor = Color.Transparent,
+            floatingActionButton = {
+                GlassFAB(onClick = { showAddDialog = true }, icon = Icons.Rounded.CreateNewFolder,
+                    label = stringResource(R.string.new_folder), modifier = Modifier.padding(bottom = 16.dp))
+            },
+            bottomBar = {
+                FloatingBottomBar(
+                    onHomeClick = { },
+                    onProfileClick = { showUserMenu = true },
+                    onSettingsClick = onSettingsClick
+                )
             }
-            Column(modifier = Modifier.fillMaxSize()) {
+        ) { innerPadding ->
+            Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                 GlassCard(modifier = Modifier.fillMaxWidth(), cornerRadius = 0.dp, glassAlpha = 0.10f) {
-                    Column(modifier = Modifier.fillMaxWidth().statusBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 10.dp)) {
-                        Row(modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween) {
-                            Column {
-                                Text(displayName, style = MaterialTheme.typography.titleLarge,
-                                    color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold)
-                                if (userEmail.isNotEmpty() && userEmail != displayName)
-                                    Text(userEmail, style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f))
+                    Column(modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp)) {
+
+                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                if (photoUrl != null) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(context).data(photoUrl).crossfade(true).build(),
+                                        contentDescription = "صورة الحساب", contentScale = ContentScale.Crop,
+                                        modifier = Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
+                                    )
+                                } else {
+                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(40.dp).clip(CircleShape).background(Brush.linearGradient(listOf(AccentPurple, YouTubeRed)))) {
+                                        Text(displayName.firstOrNull()?.toString() ?: "G", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                    }
+                                }
+
+                                Column {
+                                    Text(displayName, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.SemiBold)
+                                    Text(userEmail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(0.5f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
                             }
+
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (isSyncing) {
-                                    CircularProgressIndicator(modifier = Modifier.size(20.dp),
-                                        color = MaterialTheme.colorScheme.primary, strokeWidth = 2.dp)
-                                    Spacer(Modifier.width(8.dp))
-                                }
-                                IconButton(onClick = { showSyncOptions = true }) {
-                                    Icon(Icons.Rounded.Sync, stringResource(R.string.import_text), tint = MaterialTheme.colorScheme.onBackground)
-                                }
-                                IconButton(onClick = onSettingsClick) {
-                                    Icon(Icons.Rounded.Settings, stringResource(R.string.settings), tint = MaterialTheme.colorScheme.onBackground)
+                                if (isSyncing) CircularProgressIndicator(modifier = Modifier.size(18.dp), color = AccentPurple, strokeWidth = 2.dp)
+                                Spacer(Modifier.width(4.dp))
+                                IconButton(onClick = { showSyncOptions = true }, modifier = Modifier.size(36.dp)) {
+                                    Icon(Icons.Rounded.Sync, null, tint = MaterialTheme.colorScheme.onBackground, modifier = Modifier.size(20.dp))
                                 }
                             }
                         }
-                        Spacer(Modifier.height(6.dp))
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Rounded.PlayCircle, null, tint = YouTubeRed, modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(5.dp))
-                            Text("GriezTech", fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f))
-                            Text("  ·  ${folders.size} ${stringResource(R.string.folder_word)}", style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.40f))
+
+                        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                            StatItem(totalFolders.toString(),  stringResource(R.string.folder_word))
+                            StatItem(totalChannels.toString(), stringResource(R.string.channel_word))
+                            StatItem(totalPlaylists.toString(),stringResource(R.string.playlist_word))
+                        }
+
+                        OutlinedTextField(
+                            value = mainSearchQuery, onValueChange = { mainSearchQuery = it },
+                            placeholder = { Text(stringResource(R.string.search_hint), color = MaterialTheme.colorScheme.onBackground.copy(0.5f), fontSize = 13.sp) },
+                            leadingIcon = { Icon(Icons.Rounded.Search, null, tint = MaterialTheme.colorScheme.onBackground.copy(0.5f), modifier = Modifier.size(18.dp)) },
+                            modifier = Modifier.fillMaxWidth().height(54.dp), shape = CircleShape, singleLine = true,
+                            textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor   = AccentPurple, unfocusedBorderColor = MaterialTheme.colorScheme.onBackground.copy(0.2f),
+                                focusedTextColor     = MaterialTheme.colorScheme.onBackground, unfocusedTextColor   = MaterialTheme.colorScheme.onBackground,
+                            )
+                        )
+                    }
+                }
+
+                // ✅ Notice Card من Remote Config
+                noticeMessage?.let { msg ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        colors   = CardDefaults.cardColors(containerColor = AccentPurple.copy(alpha = 0.15f)),
+                        shape    = RoundedCornerShape(16.dp)
+                    ) {
+                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Rounded.Info, null, tint = AccentPurple)
+                            Spacer(Modifier.width(8.dp))
+                            Text(msg, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
+                            IconButton(onClick = { viewModel.dismissNotice() }) {
+                                Icon(Icons.Rounded.Close, null, tint = MaterialTheme.colorScheme.onBackground.copy(0.6f))
+                            }
                         }
                     }
                 }
+
                 if (folders.isEmpty() && !isSyncing) {
                     EmptyState(onAddFolder = { showAddDialog = true }, onSyncChannels = { showSyncOptions = true })
                 } else {
-                    LazyColumn(state = reorderState.listState,
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxSize().reorderable(reorderState)) {
-                        items(folders, key = { it.id }) { folder ->
+                    LazyColumn(state = reorderState.listState, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 80.dp), verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxSize().reorderable(reorderState)) {
+                        items(filteredFolders, key = { it.id }) { folder ->
                             ReorderableItem(reorderState, key = folder.id) { isDragging ->
-                                val elev by animateFloatAsState(if (isDragging) 8f else 0f, label = "elev")
-                                // ✅ إضافة زر التعديل لبطاقة المجلد
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().detectReorderAfterLongPress(reorderState).graphicsLayer { shadowElevation = elev },
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(modifier = Modifier.weight(1f)) {
-                                        FolderCard(folder = folder, channelCount = channelCounts[folder.id] ?: 0,
-                                            isDragging = isDragging, onClick = { onFolderClick(folder) },
-                                            onLongPress = { folderToDelete = folder },
-                                            modifier = Modifier.fillMaxWidth()
+                                val dismissState = rememberSwipeToDismissBoxState(
+                                    confirmValueChange = {
+                                        if (it == SwipeToDismissBoxValue.EndToStart) { folderToDelete = folder; false } else false
+                                    }
+                                )
+                                SwipeToDismissBox(
+                                    state = dismissState, enableDismissFromStartToEnd = false,
+                                    backgroundContent = {
+                                        val isSwiping = dismissState.targetValue == SwipeToDismissBoxValue.EndToStart || dismissState.currentValue == SwipeToDismissBoxValue.EndToStart
+                                        if (isSwiping) {
+                                            Box(
+                                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(20.dp)).background(Brush.linearGradient(listOf(Color(0xFFAA0000), Color(0xFFEE3333)))).padding(end = 28.dp),
+                                                contentAlignment = Alignment.CenterEnd
+                                            ) {
+                                                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                                    Icon(Icons.Rounded.Delete, null, tint = Color.White, modifier = Modifier.size(24.dp))
+                                                    Text(stringResource(R.string.delete), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+                                        }
+                                    },
+                                    content = {
+                                        FolderCard(
+                                            folder = folder, channelCount = channelCounts[folder.id] ?: 0, isDragging = isDragging,
+                                            onClick = { onFolderClick(folder) }, onLongPress = { folderToEdit = folder },
+                                            modifier = Modifier.detectReorderAfterLongPress(reorderState),
                                         )
                                     }
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    // أيقونة التعديل بجوار المجلد
-                                    IconButton(
-                                        onClick = { folderToEdit = folder },
-                                        modifier = Modifier.background(Color.White.copy(0.05f), CircleShape).size(40.dp)
-                                    ) {
-                                        Icon(Icons.Rounded.Edit, contentDescription = stringResource(R.string.edit), tint = Color.White.copy(0.7f), modifier = Modifier.size(20.dp))
-                                    }
-                                }
+                                )
                             }
                         }
                     }
@@ -169,454 +255,269 @@ fun HomeScreen(
         }
     }
 
-    if (showSyncOptions) {
-        SyncOptionsDialog(onDismiss = { showSyncOptions = false },
-            onSyncSubscriptions = { showSyncOptions = false; viewModel.syncSubscriptions() },
-            onSyncPlaylists     = { showSyncOptions = false; viewModel.syncPlaylists() },
-            onSyncAll           = { showSyncOptions = false; viewModel.syncAll() })
-    }
-
-    folderToDelete?.let { folder ->
-        val willBeDeleted = stringResource(R.string.will_be_deleted)
-        val cannotBeUndone = stringResource(R.string.cannot_be_undone)
+    if (showUserMenu) {
         AlertDialog(
-            onDismissRequest = { folderToDelete = null },
-            containerColor   = MaterialTheme.colorScheme.surface,
-            title  = { Text(stringResource(R.string.delete_folder_title)) },
-            text   = { Text("$willBeDeleted \"${folder.emoji} ${folder.name}\" $cannotBeUndone") },
-            confirmButton  = {
-                Button(
-                    onClick = { viewModel.deleteFolder(folder); folderToDelete = null },
-                    colors  = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                ) { Text(stringResource(R.string.delete)) }
+            onDismissRequest = { showUserMenu = false }, containerColor = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(28.dp),
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Person, null, tint = AccentPurple)
+                    Spacer(Modifier.width(10.dp))
+                    Text(stringResource(R.string.account), color = MaterialTheme.colorScheme.onSurface, fontSize = 20.sp)
+                }
             },
-            dismissButton = {
-                TextButton(onClick = { folderToDelete = null }) { Text(stringResource(R.string.cancel)) }
+            text = {
+                Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Column {
+                        Text(displayName, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text(userEmail, color = MaterialTheme.colorScheme.onSurface.copy(0.6f), fontSize = 14.sp)
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(0.1f))
+                    Button(
+                        onClick = {
+                            viewModel.logout {
+                                googleSignInClient.signOut().addOnCompleteListener {
+                                    showUserMenu = false
+                                    onLogoutSuccess()
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color.Red.copy(alpha = 0.8f)), shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Rounded.Logout, null, tint = Color.White)
+                        Spacer(Modifier.width(8.dp))
+                        Text(stringResource(R.string.logout), fontWeight = FontWeight.SemiBold, color = Color.White)
+                    }
+                }
             },
-        )
-    }
-
-    // ✅ استدعاء ديالوج تعديل المجلد
-    folderToEdit?.let { folder ->
-        EditFolderDialog(
-            folder = folder,
-            onConfirm = { updatedName, updatedEmoji ->
-                viewModel.updateFolder(folder.copy(name = updatedName, emoji = updatedEmoji))
-                folderToEdit = null
-            },
-            onDismiss = { folderToEdit = null }
+            confirmButton = { TextButton(onClick = { showUserMenu = false }) { Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.onSurface.copy(0.6f)) } }
         )
     }
 
     if (showAddDialog) {
         AddFolderDialog(
-            allChannels   = allChannels,
-            allPlaylists  = allPlaylists,
-            externalError = folderError,
-            onClearError  = { viewModel.clearFolderCreateError() },
+            allChannels = allChannels, allPlaylists = allPlaylists, externalError = folderError,
+            onClearError = { viewModel.clearFolderCreateError() },
             onConfirm = { name, emoji, color, chIds, plIds ->
-                viewModel.createFolderWithItems(
-                    name        = name,
-                    emoji       = emoji,
-                    color       = color,
-                    channelIds  = chIds,
-                    playlistIds = plIds,
-                    onSuccess   = { showAddDialog = false },
-                    onError     = { /* الخطأ يظهر داخل الحوار */ },
+                // ✅ استدعاء التحقق الذكي قبل الحفظ الفعلي
+                viewModel.checkItemsBeforeCreatingFolder(chIds, plIds,
+                    onWarningNeeded = { msg ->
+                        moveWarningMessage = msg
+                        pendingFolder = PendingFolder(name, emoji, color, chIds, plIds)
+                        showAddDialog = false
+                    },
+                    onProceed = {
+                        viewModel.createFolderWithItems(name, emoji, color, chIds, plIds, onSuccess = { showAddDialog = false })
+                    }
                 )
             },
-            onDismiss = { showAddDialog = false; viewModel.clearFolderCreateError() },
+            onDismiss = { showAddDialog = false; viewModel.clearFolderCreateError() }
         )
     }
-}
 
-// ✅ مكون جديد بالكامل: ديالوج تعديل المجلد
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
-@Composable
-private fun EditFolderDialog(
-    folder: Folder,
-    onConfirm: (String, String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var folderName by remember { mutableStateOf(folder.name) }
-    var selectedEmoji by remember { mutableStateOf(folder.emoji) }
-
-    // قائمة الإيموجي الموسعة التي طلبها المستخدم
-    val emojis = listOf(
-        "📁","🎵","🎮","📚","🏋️","🍳","✈️","💻","🎬","🔬","📰","🎨",
-        "🌍","📈","📖","⚽","🏀","🍔","🍕","🚗","🚀","🔥","✨","💡"
-    )
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor   = Color(0xFF1A1A2E), // خلفية زجاجية غامقة
-        shape            = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
-        title = {
-            Text(stringResource(R.string.edit_folder), style = MaterialTheme.typography.titleLarge, color = Color.White)
-        },
-        text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-
-                // تعديل الاسم
-                OutlinedTextField(
-                    value = folderName,
-                    onValueChange = { folderName = it },
-                    label = { Text(stringResource(R.string.folder_name), color = Color.White.copy(0.6f)) },
-                    leadingIcon = { Icon(Icons.Rounded.Edit, contentDescription = null, tint = Color.White.copy(0.5f)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White, unfocusedTextColor = Color.White,
-                        focusedBorderColor = AccentBlue, unfocusedBorderColor = Color.White.copy(0.2f)
-                    )
-                )
-
-                // تعديل الإيموجي
-                Text(stringResource(R.string.choose_emoji), style = MaterialTheme.typography.labelMedium, color = Color.White.copy(0.7f))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    emojis.forEach { emoji ->
-                        FilterChip(
-                            selected = emoji == selectedEmoji,
-                            onClick = { selectedEmoji = emoji },
-                            label = { Text(emoji, fontSize = 20.sp) }, // تكبير الإيموجي قليلاً
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = AccentBlue.copy(0.35f), // لون التحديد أزرق متناسق
-                                containerColor = Color.White.copy(0.06f)
-                            )
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(R.string.cancel), color = Color.White.copy(0.6f))
-                }
+    // ✅ نافذة التنبيه الذكية لنقل القنوات من مجلدات أخرى (في الشاشة الرئيسية)
+    pendingFolder?.let { pending ->
+        AlertDialog(
+            onDismissRequest = { pendingFolder = null },
+            containerColor   = MaterialTheme.colorScheme.surface,
+            shape            = RoundedCornerShape(24.dp),
+            title = { Text(stringResource(R.string.confirm_move_title), color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
+            text = { Text(moveWarningMessage, color = MaterialTheme.colorScheme.onSurface.copy(0.8f)) },
+            confirmButton = {
                 Button(
                     onClick = {
-                        if (folderName.isNotBlank()) {
-                            onConfirm(folderName.trim(), selectedEmoji)
-                        }
+                        viewModel.createFolderWithItems(pending.name, pending.emoji, pending.color, pending.chIds, pending.plIds, onSuccess = { pendingFolder = null })
                     },
-                    colors  = ButtonDefaults.buttonColors(containerColor = AccentBlue),
-                    enabled = folderName.isNotBlank(),
-                ) {
-                    Text(stringResource(R.string.save))
-                }
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentPurple)
+                ) { Text(stringResource(R.string.move_action), color = Color.White) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingFolder = null }) { Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.onSurface.copy(0.6f)) }
             }
-        },
-        dismissButton = {}
-    )
-}
+        )
+    }
 
+    folderToEdit?.let { folder ->
+        EditFolderDialog(folder = folder, onConfirm = { n, e -> viewModel.updateFolder(folder.copy(name=n, emoji=e)); folderToEdit = null }, onDismiss = { folderToEdit = null })
+    }
 
-@Composable
-private fun SyncOptionsDialog(onDismiss: () -> Unit, onSyncSubscriptions: () -> Unit,
-                              onSyncPlaylists: () -> Unit, onSyncAll: () -> Unit) {
-    AlertDialog(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
-        title = { Text(stringResource(R.string.import_from_youtube), style = MaterialTheme.typography.titleLarge) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(stringResource(R.string.choose_what_to_import), style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
-                Spacer(Modifier.height(4.dp))
-                OutlinedButton(onClick = onSyncSubscriptions, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Rounded.PersonAdd, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.subscribed_channels))
-                }
-                OutlinedButton(onClick = onSyncPlaylists, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Rounded.QueueMusic, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.playlists))
-                }
-                Button(onClick = onSyncAll, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Rounded.Sync, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.import_all))
-                }
-            }
-        }, confirmButton = {}, dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } })
+    folderToDelete?.let { folder ->
+        AlertDialog(onDismissRequest = { folderToDelete = null }, title = { Text(stringResource(R.string.delete_folder_title)) },
+            text = { Text(stringResource(R.string.cannot_be_undone)) },
+            confirmButton = { Button(onClick = { viewModel.deleteFolder(folder); folderToDelete = null }, colors = ButtonDefaults.buttonColors(containerColor = Color.Red)) { Text(stringResource(R.string.delete), color = Color.White) } },
+            dismissButton = { TextButton(onClick = { folderToDelete = null }) { Text(stringResource(R.string.cancel)) } }
+        )
+    }
+
+    if (showSyncOptions) SyncOptionsDialog(onDismiss = { showSyncOptions = false }, onSyncSubscriptions = { viewModel.syncSubscriptions(); showSyncOptions = false }, onSyncPlaylists = { viewModel.syncPlaylists(); showSyncOptions = false }, onSyncAll = { viewModel.syncAll(); showSyncOptions = false })
 }
 
 @Composable
-private fun EmptyState(onAddFolder: () -> Unit, onSyncChannels: () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize().padding(32.dp),
-        verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("📺", style = MaterialTheme.typography.displayLarge)
-        Spacer(Modifier.height(16.dp))
-        Text(stringResource(R.string.no_folders_yet), style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onBackground, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(8.dp))
-        Text(stringResource(R.string.create_folder_or_import), style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f), textAlign = TextAlign.Center)
-        Spacer(Modifier.height(28.dp))
-        Button(onClick = onSyncChannels, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Rounded.Sync, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.import_my_channels))
-        }
-        Spacer(Modifier.height(12.dp))
-        OutlinedButton(onClick = onAddFolder, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Rounded.CreateNewFolder, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.create_new_folder))
+private fun FloatingBottomBar(onHomeClick: () -> Unit, onProfileClick: () -> Unit, onSettingsClick: () -> Unit) {
+    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp).navigationBarsPadding(), contentAlignment = Alignment.Center) {
+        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, shadowElevation = 8.dp) {
+            Row(modifier = Modifier.padding(horizontal = 32.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(48.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onHomeClick, modifier = Modifier.size(40.dp)) { Icon(Icons.Rounded.Home, null, tint = AccentPurple, modifier = Modifier.size(28.dp)) }
+                IconButton(onClick = onProfileClick, modifier = Modifier.size(40.dp)) { Icon(Icons.Rounded.AccountCircle, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.6f), modifier = Modifier.size(26.dp)) }
+                IconButton(onClick = onSettingsClick, modifier = Modifier.size(40.dp)) { Icon(Icons.Rounded.Settings, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.6f), modifier = Modifier.size(26.dp)) }
+            }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun StatItem(value: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Text(label, color = MaterialTheme.colorScheme.onBackground.copy(0.6f), fontSize = 11.sp)
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AddFolderDialog(
-    allChannels   : List<Channel>,
-    allPlaylists  : List<Playlist>,
-    externalError : String?,
-    onClearError  : () -> Unit,
-    onConfirm     : (String, String, String, List<String>, List<String>) -> Unit,
-    onDismiss     : () -> Unit,
+    allChannels: List<Channel>, allPlaylists: List<Playlist>,
+    externalError: String?, onClearError: () -> Unit,
+    onConfirm: (String, String, String, List<String>, List<String>) -> Unit,
+    onDismiss: () -> Unit
 ) {
-    var folderName        by remember { mutableStateOf("") }
-    var selectedEmoji     by remember { mutableStateOf("📁") }
-    var selectedColor     by remember { mutableStateOf("#FF4444") }
-    var selectedChannels  by remember { mutableStateOf(setOf<String>()) }
+    var folderName by remember { mutableStateOf("") }
+    var selectedEmoji by remember { mutableStateOf("📁") }
+    var selectedColor by remember { mutableStateOf("#9B6FFF") }
+    var selectedChannels by remember { mutableStateOf(setOf<String>()) }
     var selectedPlaylists by remember { mutableStateOf(setOf<String>()) }
-    var currentTab        by remember { mutableStateOf(0) }
-
-    // ✅ إضافة حالة البحث
-    var searchQuery       by remember { mutableStateOf("") }
-
-    val errorMsg = externalError
-
-    val emojis = listOf("📁","🎵","🎮","📚","🏋️","🍳","✈️","💻","🎬","🔬","📰","🎨", "🌍","📈","📖","⚽","🏀","🍔","🍕","🚗","🚀","🔥","✨","💡")
+    var currentTab by remember { mutableStateOf(0) }
+    var searchQuery by remember { mutableStateOf("") }
+    val emojis = listOf("📁","🎵","🎮","📚","🏋️","🍳","✈️","💻","🎬","🔬","📰","🎨","🌍","📈","📖","⚽","🏀","🍔","🍕","🚗","🚀","🔥","✨","💡")
     val colors = listOf("#FF4444","#FF8800","#FFCC00","#44CC88","#4488FF","#8855FF","#FF44AA","#00CCBB")
 
-    // ✅ تفريغ مربع البحث عند التنقل بين التبويبات
-    LaunchedEffect(currentTab) {
-        searchQuery = ""
-    }
-
     AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor   = Color(0xFF1A1A2E),
-        shape            = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+        onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(24.dp),
         title = {
             Column {
-                Text(stringResource(R.string.new_folder), style = MaterialTheme.typography.titleLarge, color = Color.White)
-                Spacer(Modifier.height(10.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(Triple(stringResource(R.string.basic_tab), Icons.Rounded.Folder, 0),
-                        Triple(stringResource(R.string.channels_tab), Icons.Rounded.Person, 1),
-                        Triple(stringResource(R.string.playlists_tab), Icons.Rounded.QueueMusic, 2))
-                        .forEach { (label, icon, idx) ->
-                            FilterChip(selected = currentTab == idx, onClick = { currentTab = idx },
-                                label = {
-                                    Row(verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        Icon(icon, null, modifier = Modifier.size(13.dp))
-                                        Text(label, fontSize = 12.sp)
-                                    }
-                                },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = AccentPurple.copy(0.35f),
-                                    selectedLabelColor     = Color.White,
-                                    containerColor         = Color.White.copy(0.06f),
-                                    labelColor             = Color.White.copy(0.5f)),
-                                modifier = Modifier.weight(1f))
-                        }
+                Text(stringResource(R.string.new_folder), color = MaterialTheme.colorScheme.onSurface)
+                Row(modifier = Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    TabChip(stringResource(R.string.basic_tab), currentTab == 0) { currentTab = 0; searchQuery = "" }
+                    TabChip(stringResource(R.string.channels_tab), currentTab == 1) { currentTab = 1; searchQuery = "" }
+                    TabChip(stringResource(R.string.playlists_tab), currentTab == 2) { currentTab = 2; searchQuery = "" }
                 }
             }
         },
         text = {
-            Box(modifier = Modifier.heightIn(max = 420.dp)) {
+            Box(Modifier.height(400.dp)) {
                 when (currentTab) {
-                    0 -> Column(modifier = Modifier.verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                        Text(stringResource(R.string.choose_emoji), style = MaterialTheme.typography.labelMedium, color = Color.White.copy(0.7f))
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            emojis.forEach { emoji ->
-                                FilterChip(selected = emoji == selectedEmoji, onClick = { selectedEmoji = emoji },
-                                    label = { Text(emoji) },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = AccentPurple.copy(0.35f), containerColor = Color.White.copy(0.06f)))
-                            }
+                    0 -> Column(Modifier.verticalScroll(rememberScrollState())) {
+                        Text(stringResource(R.string.choose_emoji), color = MaterialTheme.colorScheme.onSurface.copy(0.6f), fontSize = 12.sp)
+                        FlowRow(Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            emojis.forEach { e -> FilterChip(selected = e == selectedEmoji, onClick = { selectedEmoji = e }, label = { Text(e, fontSize = 18.sp) }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = AccentPurple.copy(0.35f), containerColor = MaterialTheme.colorScheme.onSurface.copy(0.06f))) }
                         }
-                        OutlinedTextField(value = folderName, onValueChange = { folderName = it },
-                            label = { Text(stringResource(R.string.folder_name), color = Color.White.copy(0.6f)) },
-                            singleLine = true, modifier = Modifier.fillMaxWidth(),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = Color.White, unfocusedTextColor = Color.White,
-                                focusedBorderColor = AccentPurple, unfocusedBorderColor = Color.White.copy(0.2f)))
-                        Text(stringResource(R.string.choose_color), style = MaterialTheme.typography.labelMedium, color = Color.White.copy(0.7f))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            colors.forEach { hex ->
+                        OutlinedTextField(value = folderName, onValueChange = { folderName = it }, label = { Text(stringResource(R.string.folder_name)) }, modifier = Modifier.fillMaxWidth(), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = MaterialTheme.colorScheme.onSurface, unfocusedTextColor = MaterialTheme.colorScheme.onSurface))
+                        Text(stringResource(R.string.choose_color), color = MaterialTheme.colorScheme.onSurface.copy(0.6f), modifier = Modifier.padding(top = 10.dp), fontSize = 12.sp)
+                        androidx.compose.foundation.lazy.LazyRow(
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            contentPadding = PaddingValues(horizontal = 4.dp)
+                        ) {
+                            items(colors) { hex ->
                                 val c = try { Color(android.graphics.Color.parseColor(hex)) } catch (e: Exception) { Color.Red }
-                                Box(modifier = Modifier.size(32.dp).background(c, CircleShape)
-                                    .border(if (hex == selectedColor) 3.dp else 0.dp, Color.White, CircleShape)
-                                    .clickable { selectedColor = hex })
-                            }
-                        }
-                        if (selectedChannels.isNotEmpty() || selectedPlaylists.isNotEmpty()) {
-                            HorizontalDivider(color = Color.White.copy(0.1f))
-                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                if (selectedChannels.isNotEmpty())
-                                    AssistChip(onClick = { currentTab = 1 },
-                                        label = { Text("${selectedChannels.size} ${stringResource(R.string.channel_word)}", fontSize = 11.sp) },
-                                        leadingIcon = { Icon(Icons.Rounded.Person, null, Modifier.size(14.dp)) },
-                                        colors = AssistChipDefaults.assistChipColors(containerColor = AccentBlue.copy(0.20f), labelColor = Color.White))
-                                if (selectedPlaylists.isNotEmpty())
-                                    AssistChip(onClick = { currentTab = 2 },
-                                        label = { Text("${selectedPlaylists.size} ${stringResource(R.string.playlist_word)}", fontSize = 11.sp) },
-                                        leadingIcon = { Icon(Icons.Rounded.QueueMusic, null, Modifier.size(14.dp)) },
-                                        colors = AssistChipDefaults.assistChipColors(containerColor = AccentTeal.copy(0.20f), labelColor = Color.White))
+                                Box(
+                                    modifier = Modifier.size(36.dp).background(c, CircleShape)
+                                        .border(width = if (hex == selectedColor) 3.dp else 0.dp, color = MaterialTheme.colorScheme.onSurface, shape = CircleShape)
+                                        .clickable { selectedColor = hex }
+                                )
                             }
                         }
                     }
-                    1 -> if (allChannels.isEmpty()) {
-                        Box(Modifier.fillMaxWidth().padding(vertical = 40.dp), Alignment.Center) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("📡", fontSize = 36.sp)
-                                Text(stringResource(R.string.no_imported_channels), style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.White.copy(0.5f), textAlign = TextAlign.Center)
-                            }
-                        }
-                    } else {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-
-                            // ✅ إضافة مربع البحث للقنوات
-                            OutlinedTextField(
-                                value = searchQuery,
-                                onValueChange = { searchQuery = it },
-                                placeholder = { Text(stringResource(R.string.search_hint), color = Color.White.copy(0.4f)) },
-                                leadingIcon = { Icon(Icons.Rounded.Search, null, tint = Color.White.copy(0.5f)) },
-                                trailingIcon = {
-                                    if (searchQuery.isNotEmpty()) {
-                                        IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Rounded.Clear, null, tint = Color.White.copy(0.5f)) }
-                                    }
-                                },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = AccentBlue, unfocusedBorderColor = Color.White.copy(0.1f),
-                                    focusedTextColor = Color.White, unfocusedTextColor = Color.White
-                                )
-                            )
-
-                            // ✅ فلترة القنوات بناءً على البحث
-                            val filteredChannels = remember(searchQuery, allChannels) {
-                                if (searchQuery.isBlank()) allChannels
-                                else allChannels.filter { it.title.contains(searchQuery, ignoreCase = true) }
-                            }
-
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically) {
-                                Text("${selectedChannels.size}/${allChannels.size} ${stringResource(R.string.selected_label)}",
-                                    style = MaterialTheme.typography.bodySmall, color = Color.White.copy(0.5f))
-
-                                // ✅ زر تحديد الكل مفلتر بذكاء
-                                val filteredIds = filteredChannels.map { it.id }.toSet()
-                                val allFilteredSelected = filteredIds.isNotEmpty() && selectedChannels.containsAll(filteredIds)
-
-                                TextButton(onClick = {
-                                    selectedChannels = if (allFilteredSelected) selectedChannels - filteredIds else selectedChannels + filteredIds
-                                }) { Text(if (allFilteredSelected) stringResource(R.string.deselect_all) else stringResource(R.string.select_all), color = AccentPurple, fontSize = 12.sp) }
-                            }
-                            LazyColumn(modifier = Modifier.heightIn(max = 280.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                items(filteredChannels, key = { it.id }) { ch -> // ✅ عرض القنوات المفلترة فقط
-                                    val sel = ch.id in selectedChannels
-                                    SelectableItem(ch.title, "${ch.subscriberCount} ${stringResource(R.string.subscriber_word)}", sel, AccentBlue) {
-                                        selectedChannels = if (sel) selectedChannels - ch.id else selectedChannels + ch.id
-                                    }
-                                }
-                            }
-                        }
+                    1 -> Column {
+                        SearchBar(searchQuery) { searchQuery = it }
+                        val filtered = allChannels.filter { it.title.contains(searchQuery, true) }
+                        LazyColumn(Modifier.weight(1f)) { items(filtered) { ch -> SelectableItem(ch.title, ch.id in selectedChannels) { selectedChannels = if (ch.id in selectedChannels) selectedChannels - ch.id else selectedChannels + ch.id } } }
                     }
-                    2 -> if (allPlaylists.isEmpty()) {
-                        Box(Modifier.fillMaxWidth().padding(vertical = 40.dp), Alignment.Center) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("🎵", fontSize = 36.sp)
-                                Text(stringResource(R.string.no_imported_playlists), style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.White.copy(0.5f), textAlign = TextAlign.Center)
-                            }
-                        }
-                    } else {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-
-                            // ✅ إضافة مربع البحث للقوائم
-                            OutlinedTextField(
-                                value = searchQuery,
-                                onValueChange = { searchQuery = it },
-                                placeholder = { Text(stringResource(R.string.search_hint), color = Color.White.copy(0.4f)) },
-                                leadingIcon = { Icon(Icons.Rounded.Search, null, tint = Color.White.copy(0.5f)) },
-                                trailingIcon = {
-                                    if (searchQuery.isNotEmpty()) {
-                                        IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Rounded.Clear, null, tint = Color.White.copy(0.5f)) }
-                                    }
-                                },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = AccentTeal, unfocusedBorderColor = Color.White.copy(0.1f),
-                                    focusedTextColor = Color.White, unfocusedTextColor = Color.White
-                                )
-                            )
-
-                            // ✅ فلترة القوائم بناءً على البحث
-                            val filteredPlaylists = remember(searchQuery, allPlaylists) {
-                                if (searchQuery.isBlank()) allPlaylists
-                                else allPlaylists.filter { it.title.contains(searchQuery, ignoreCase = true) }
-                            }
-
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically) {
-                                Text("${selectedPlaylists.size}/${allPlaylists.size} ${stringResource(R.string.selected_label)}",
-                                    style = MaterialTheme.typography.bodySmall, color = Color.White.copy(0.5f))
-
-                                val filteredIds = filteredPlaylists.map { it.id }.toSet()
-                                val allFilteredSelected = filteredIds.isNotEmpty() && selectedPlaylists.containsAll(filteredIds)
-
-                                TextButton(onClick = {
-                                    selectedPlaylists = if (allFilteredSelected) selectedPlaylists - filteredIds else selectedPlaylists + filteredIds
-                                }) { Text(if (allFilteredSelected) stringResource(R.string.deselect_all) else stringResource(R.string.select_all), color = AccentTeal, fontSize = 12.sp) }
-                            }
-                            LazyColumn(modifier = Modifier.heightIn(max = 280.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                items(filteredPlaylists, key = { it.id }) { pl -> // ✅ عرض القوائم المفلترة فقط
-                                    val sel = pl.id in selectedPlaylists
-                                    SelectableItem(pl.title, "${pl.itemCount} ${stringResource(R.string.video_word)} • ${pl.channelTitle}", sel, AccentTeal) {
-                                        selectedPlaylists = if (sel) selectedPlaylists - pl.id else selectedPlaylists + pl.id
-                                    }
-                                }
-                            }
-                        }
+                    2 -> Column {
+                        SearchBar(searchQuery) { searchQuery = it }
+                        val filtered = allPlaylists.filter { it.title.contains(searchQuery, true) }
+                        LazyColumn(Modifier.weight(1f)) { items(filtered) { pl -> SelectableItem(pl.title, pl.id in selectedPlaylists) { selectedPlaylists = if (pl.id in selectedPlaylists) selectedPlaylists - pl.id else selectedPlaylists + pl.id } } }
                     }
                 }
             }
         },
         confirmButton = {
             Column(horizontalAlignment = Alignment.End) {
-                if (!errorMsg.isNullOrBlank()) {
-                    Text(text = errorMsg, color = Color(0xFFFF6060), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 6.dp, end = 4.dp))
+                if (externalError != null) {
+                    val displayError = if (externalError.contains("already exists", ignoreCase = true)) stringResource(R.string.folder_exists_error) else externalError
+                    Text(displayError, color = Color.Red, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp))
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel), color = Color.White.copy(0.6f)) }
-                    Button(
-                        onClick = {
-                            onClearError()
-                            if (folderName.isNotBlank())
-                                onConfirm(folderName.trim(), selectedEmoji, selectedColor, selectedChannels.toList(), selectedPlaylists.toList())
-                        },
-                        colors  = ButtonDefaults.buttonColors(containerColor = AccentPurple),
-                        enabled = folderName.isNotBlank(),
-                    ) { Text(stringResource(R.string.create)) }
+                Button(onClick = { onClearError(); onConfirm(folderName, selectedEmoji, selectedColor, selectedChannels.toList(), selectedPlaylists.toList()) }, enabled = folderName.isNotBlank(), colors = ButtonDefaults.buttonColors(containerColor = AccentPurple)) { Text(stringResource(R.string.create), color = Color.White) }
+            }
+        },
+        dismissButton = { TextButton(onClick = { onClearError(); onDismiss() }) { Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.onSurface.copy(0.6f)) } }
+    )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun EditFolderDialog(folder: Folder, onConfirm: (String, String) -> Unit, onDismiss: () -> Unit) {
+    var folderName by remember { mutableStateOf(folder.name) }
+    var selectedEmoji by remember { mutableStateOf(folder.emoji) }
+    val emojis = listOf("📁","🎵","🎮","📚","🏋️","🍳","✈️","💻","🎬","🔬","📰","🎨","🌍","📈","📖","⚽","🏀","🍔","🍕","🚗","🚀","🔥","✨","💡")
+    AlertDialog(
+        onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(24.dp),
+        title = { Text(stringResource(R.string.edit_folder), color = MaterialTheme.colorScheme.onSurface) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                OutlinedTextField(value = folderName, onValueChange = { folderName = it }, label = { Text(stringResource(R.string.folder_name)) }, modifier = Modifier.fillMaxWidth(), colors = OutlinedTextFieldDefaults.colors(focusedTextColor = MaterialTheme.colorScheme.onSurface, unfocusedTextColor = MaterialTheme.colorScheme.onSurface))
+                Spacer(Modifier.height(16.dp))
+                Text(stringResource(R.string.choose_emoji), color = MaterialTheme.colorScheme.onSurface.copy(0.6f), fontSize = 12.sp)
+                FlowRow(Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    emojis.forEach { e -> FilterChip(selected = e == selectedEmoji, onClick = { selectedEmoji = e }, label = { Text(e, fontSize = 18.sp) }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = AccentPurple.copy(0.35f), containerColor = MaterialTheme.colorScheme.onSurface.copy(0.06f))) }
                 }
             }
         },
-        dismissButton = {},
+        confirmButton = { Button(onClick = { onConfirm(folderName, selectedEmoji) }, enabled = folderName.isNotBlank(), colors = ButtonDefaults.buttonColors(containerColor = AccentPurple)) { Text(stringResource(R.string.save), color = Color.White) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.onSurface.copy(0.6f)) } }
     )
 }
 
 @Composable
-private fun SelectableItem(title: String, subtitle: String, isSelected: Boolean, accentColor: Color, onToggle: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth()
-        .background(accentColor.copy(if (isSelected) 0.20f else 0.06f), androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
-        .clickable(onClick = onToggle).padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Checkbox(checked = isSelected, onCheckedChange = { onToggle() },
-            colors = CheckboxDefaults.colors(checkedColor = accentColor, uncheckedColor = Color.White.copy(0.3f)))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyMedium, color = Color.White, fontWeight = FontWeight.Medium, maxLines = 1)
-            if (subtitle.isNotEmpty())
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(0.5f), maxLines = 1)
-        }
+private fun SearchBar(query: String, onQueryChange: (String) -> Unit) {
+    OutlinedTextField(value = query, onValueChange = onQueryChange, placeholder = { Text(stringResource(R.string.search_hint), color = MaterialTheme.colorScheme.onSurface.copy(0.4f)) }, leadingIcon = { Icon(Icons.Rounded.Search, null, tint = MaterialTheme.colorScheme.onSurface.copy(0.4f)) }, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), shape = RoundedCornerShape(12.dp), singleLine = true, colors = OutlinedTextFieldDefaults.colors(focusedTextColor = MaterialTheme.colorScheme.onSurface, unfocusedTextColor = MaterialTheme.colorScheme.onSurface, focusedBorderColor = AccentPurple, unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(0.1f)))
+}
+
+@Composable
+private fun TabChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Surface(onClick = onClick, color = if (selected) AccentPurple else MaterialTheme.colorScheme.onSurface.copy(0.05f), shape = RoundedCornerShape(8.dp), modifier = Modifier.height(35.dp)) { Box(Modifier.padding(horizontal = 12.dp), contentAlignment = Alignment.Center) { Text(label, color = if(selected) Color.White else MaterialTheme.colorScheme.onSurface, fontSize = 12.sp) } }
+}
+
+@Composable
+private fun SelectableItem(title: String, selected: Boolean, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Checkbox(checked = selected, onCheckedChange = { onClick() }, colors = CheckboxDefaults.colors(checkedColor = AccentPurple, uncheckedColor = MaterialTheme.colorScheme.onSurface.copy(0.3f)))
+        Text(title, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+    }
+}
+
+@Composable
+private fun SyncOptionsDialog(onDismiss: () -> Unit, onSyncSubscriptions: () -> Unit, onSyncPlaylists: () -> Unit, onSyncAll: () -> Unit) {
+    AlertDialog(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(24.dp),
+        title = { Text(stringResource(R.string.import_from_youtube), color = MaterialTheme.colorScheme.onSurface) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(onClick = onSyncSubscriptions, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Rounded.PersonAdd, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.subscribed_channels)) }
+                OutlinedButton(onClick = onSyncPlaylists, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Rounded.QueueMusic, null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.playlists)) }
+                Button(onClick = onSyncAll, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = AccentPurple)) { Icon(Icons.Rounded.Sync, null, tint = Color.White); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.import_all), color = Color.White) }
+            }
+        }, confirmButton = {}, dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.onSurface.copy(0.6f)) } }
+    )
+}
+
+@Composable
+private fun EmptyState(onAddFolder: () -> Unit, onSyncChannels: () -> Unit) {
+    Column(modifier = Modifier.fillMaxSize().padding(32.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("📺", fontSize = 60.sp)
+        Spacer(Modifier.height(16.dp))
+        Text(stringResource(R.string.no_folders_yet), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onBackground, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(28.dp))
+        Button(onClick = onSyncChannels, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = AccentPurple)) { Icon(Icons.Rounded.Sync, null, tint = Color.White); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.import_my_channels), color = Color.White) }
+        Spacer(Modifier.height(12.dp))
+        OutlinedButton(onClick = onAddFolder, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Rounded.CreateNewFolder, null, tint = MaterialTheme.colorScheme.onBackground); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.create_new_folder), color = MaterialTheme.colorScheme.onBackground) }
     }
 }

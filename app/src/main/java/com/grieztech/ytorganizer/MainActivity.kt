@@ -6,6 +6,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.EaseInOutCubic
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.runtime.*
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -31,7 +36,6 @@ val KEY_LANG  = stringPreferencesKey("lang")
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    // ✅ إصلاح اللغة: attachBaseContext يطبقها قبل أي شيء
     override fun attachBaseContext(newBase: Context) {
         val lang = runBlocking {
             newBase.dataStore.data.map { it[KEY_LANG] ?: "ar" }.firstOrNull() ?: "ar"
@@ -76,10 +80,9 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     onLanguageChange = { newLang ->
-                        // ✅ نحفظ اللغة أولاً، ثم نُعيد التشغيل بعد اكتمال الحفظ
                         kotlinx.coroutines.MainScope().launch {
                             dataStore.edit { it[KEY_LANG] = newLang }
-                            recreate() // تُستدعى بعد اكتمال الحفظ مباشرةً
+                            recreate()
                         }
                     },
                     onLogout = {},
@@ -111,7 +114,28 @@ fun GriezTechNavHost(
     val isLoggedIn    = remember { GoogleSignIn.getLastSignedInAccount(context) != null }
     var selectedFolder by remember { mutableStateOf<Folder?>(null) }
 
-    NavHost(navController = navController, startDestination = Destinations.SPLASH) {
+    // ── Fade & Slide — تلاشٍ ناعم مع حركة خفيفة للأعلى ──
+    // مدة 380ms مع EaseInOutCubic لمنحنى طبيعي غير مقطوع
+    val fadeDuration   = 380
+    val slideOffset    = 40   // بكسل — حركة خفيفة جداً، ليست قفزاً
+
+    val enterFade  = fadeIn( tween(fadeDuration, easing = EaseInOutCubic))
+    val exitFade   = fadeOut(tween(fadeDuration, easing = EaseInOutCubic))
+    val slideUp    = slideInVertically( tween(fadeDuration, easing = EaseInOutCubic)) { slideOffset }
+    val slideDown  = slideInVertically( tween(fadeDuration, easing = EaseInOutCubic)) { -slideOffset }
+
+    NavHost(
+        navController    = navController,
+        startDestination = Destinations.SPLASH,
+        // الدخول: يتلاشى ويصعد قليلاً من الأسفل
+        enterTransition    = { enterFade + slideUp   },
+        // الخروج: يتلاشى فقط بدون حركة (شاشة المغادرة تختفي بهدوء)
+        exitTransition     = { exitFade               },
+        // الرجوع: يتلاشى ويهبط قليلاً من الأعلى
+        popEnterTransition = { enterFade + slideDown  },
+        // الرجوع-خروج: يتلاشى فقط
+        popExitTransition  = { exitFade               },
+    ) {
 
         composable(Destinations.SPLASH) {
             SplashScreen(onNavigateToLogin = {
@@ -135,6 +159,11 @@ fun GriezTechNavHost(
                     navController.navigate("folder/${folder.id}/${folder.name}/${folder.emoji}")
                 },
                 onSettingsClick = { navController.navigate(Destinations.SETTINGS) },
+                onLogoutSuccess = {
+                    navController.navigate(Destinations.LOGIN) {
+                        popUpTo(Destinations.HOME) { inclusive = true }
+                    }
+                }
             )
         }
 

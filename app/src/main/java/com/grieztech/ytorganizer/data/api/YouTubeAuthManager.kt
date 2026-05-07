@@ -17,16 +17,20 @@ import javax.inject.Singleton
 class YouTubeAuthManager @Inject constructor(
     private val context: Context,
 ) {
-    // الـ Scope المطلوب لقراءة قائمة الاشتراكات
     private val SCOPE = "oauth2:https://www.googleapis.com/auth/youtube.readonly"
 
     /**
-     * يرجع Access Token صالح.
-     * GoogleAuthUtil يجدد التوكن تلقائياً إذا انتهت صلاحيته.
+     * يرجع Access Token صالح ومتجدد دائماً.
+     * clearToken أولاً لمسح أي Cache منتهي، ثم getToken لجلب توكن جديد.
      */
     suspend fun getAccessToken(): String? = withContext(Dispatchers.IO) {
         try {
             val account = GoogleSignIn.getLastSignedInAccount(context) ?: return@withContext null
+            // ✅ اجلب التوكن الحالي أولاً
+            val oldToken = GoogleAuthUtil.getToken(context, account.account!!, SCOPE)
+            // ✅ امسح الـ Cache باستخدام التوكن نفسه
+            GoogleAuthUtil.clearToken(context, oldToken)
+            // ✅ اجلب توكن جديد وصالح
             GoogleAuthUtil.getToken(context, account.account!!, SCOPE)
         } catch (e: Exception) {
             null

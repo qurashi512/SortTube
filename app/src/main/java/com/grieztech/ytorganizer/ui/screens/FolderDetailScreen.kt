@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -39,6 +40,7 @@ import com.grieztech.ytorganizer.ui.theme.*
 import com.grieztech.ytorganizer.ui.viewmodel.FolderDetailViewModel
 import org.burnoutcrew.reorderable.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FolderDetailScreen(
     folder   : Folder,
@@ -55,19 +57,32 @@ fun FolderDetailScreen(
     val availableChannels by viewModel.availableChannels.collectAsState()
     val availablePlaylists by viewModel.availablePlaylists.collectAsState()
 
+    // ── حالة التبويبات (0 للقنوات، 1 للقوائم) ──
+    var currentTab by remember { mutableIntStateOf(0) }
+
+    // ── حالات الحذف (لإظهار نافذة التأكيد) ──
+    var channelToRemove by remember { mutableStateOf<Channel?>(null) }
+    var playlistToRemove by remember { mutableStateOf<Playlist?>(null) }
+
     LaunchedEffect(folder.id) {
         viewModel.loadFolder(folder.id)
     }
 
-    val headerCount by remember(videos) {
-        derivedStateOf { if (videos.isNotEmpty()) 3 else 2 }
-    }
-
     val reorderState = rememberReorderableLazyListState(
-        onMove   = { from, to ->
-            val fromChannel = from.index - headerCount
-            val toChannel   = to.index   - headerCount
-            viewModel.moveChannel(fromChannel, toChannel)
+        onMove = { from, to ->
+            val fromKey = from.key as? String ?: return@rememberReorderableLazyListState
+            val toKey = to.key as? String ?: return@rememberReorderableLazyListState
+
+            val fromIndex = channels.indexOfFirst { it.id == fromKey }
+            val toIndex = channels.indexOfFirst { it.id == toKey }
+
+            if (fromIndex != -1 && toIndex != -1) {
+                viewModel.moveChannel(fromIndex, toIndex)
+            }
+        },
+        canDragOver = { draggedOver, _ ->
+            val overKey = draggedOver.key as? String
+            overKey != null && channels.any { it.id == overKey }
         },
         onDragEnd = { _, _ -> viewModel.saveChannelOrder() },
     )
@@ -90,7 +105,6 @@ fun FolderDetailScreen(
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
 
-            // الخلفية المتدرجة
             Canvas(modifier = Modifier.fillMaxSize()) {
                 drawRect(
                     brush = Brush.verticalGradient(
@@ -116,8 +130,7 @@ fun FolderDetailScreen(
                     .fillMaxSize()
                     .reorderable(reorderState),
             ) {
-                // ── Header ──
-                item {
+                item(key = "header_top") {
                     val channelStr = stringResource(R.string.channel_word)
                     val playlistStr = stringResource(R.string.playlist_word)
 
@@ -140,105 +153,163 @@ fun FolderDetailScreen(
                     )
                 }
 
-                // ── أحدث الفيديوهات ──
-                if (videos.isNotEmpty()) {
-                    item {
-                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                // ── شريط التبويبات ──
+                item(key = "tabs") {
+                    TabRow(
+                        selectedTabIndex = currentTab,
+                        containerColor = Color.Transparent,
+                        contentColor = AccentPurple,
+                        divider = { HorizontalDivider(color = Color.White.copy(alpha = 0.1f)) }
+                    ) {
+                        Tab(
+                            selected = currentTab == 0,
+                            onClick = { currentTab = 0 },
+                            text = { Text("${stringResource(R.string.channels)} (${channels.size})", color = if (currentTab == 0) AccentPurple else Color.White.copy(0.6f)) }
+                        )
+                        Tab(
+                            selected = currentTab == 1,
+                            onClick = { currentTab = 1 },
+                            text = { Text("${stringResource(R.string.playlists)} (${playlists.size})", color = if (currentTab == 1) AccentPurple else Color.White.copy(0.6f)) }
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+
+                if (currentTab == 0) {
+                    // ── محتوى تبويب القنوات ──
+                    if (videos.isNotEmpty()) {
+                        item(key = "header_videos") {
+                            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                                Text(
+                                    text  = stringResource(R.string.latest_videos),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = Color.White,
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                videos.take(5).forEach { video ->
+                                    VideoCard(
+                                        video   = video,
+                                        onClick = { showVideoPlayer = video },
+                                        modifier = Modifier.padding(bottom = 8.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    item(key = "header_channels") {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment     = Alignment.CenterVertically,
+                        ) {
                             Text(
-                                text  = stringResource(R.string.latest_videos),
+                                text  = stringResource(R.string.channels),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = Color.White,
                             )
-                            Spacer(Modifier.height(8.dp))
-                            videos.take(5).forEach { video ->
-                                VideoCard(
-                                    video   = video,
-                                    onClick = { showVideoPlayer = video },
-                                    modifier = Modifier.padding(bottom = 8.dp),
-                                )
-                            }
+                            Text(
+                                text  = stringResource(R.string.long_press_to_reorder),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(alpha = 0.5f),
+                            )
                         }
                     }
-                }
 
-                // ── قسم القنوات ──
-                item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment     = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text  = "${stringResource(R.string.channels)} (${channels.size})",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Color.White,
-                        )
-                        Text(
-                            text  = stringResource(R.string.long_press_to_reorder),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.5f),
-                        )
-                    }
-                }
+                    items(channels, key = { it.id }) { channel ->
+                        ReorderableItem(reorderState, key = channel.id) { isDragging ->
+                            val dismissState = rememberSwipeToDismissBoxState(
+                                confirmValueChange = {
+                                    if (it == SwipeToDismissBoxValue.EndToStart) {
+                                        channelToRemove = channel // إظهار نافذة التأكيد
+                                        false // يمنع الحذف المباشر لكي يظهر السؤال أولاً
+                                    } else false
+                                }
+                            )
 
-                items(channels, key = { it.id }) { channel ->
-                    ReorderableItem(reorderState, key = channel.id) { isDragging ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                        ) {
-                            ChannelCard(
-                                channel    = channel,
-                                isDragging = isDragging,
-                                onClick    = { viewModel.openChannel(channel) },
-                                modifier   = Modifier
-                                    .weight(1f)
-                                    .detectReorderAfterLongPress(reorderState)
-                                    .graphicsLayer {
-                                        scaleX = if (isDragging) 1.03f else 1f
-                                        scaleY = if (isDragging) 1.03f else 1f
+                            Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                                SwipeToDismissBox(
+                                    state = dismissState,
+                                    enableDismissFromStartToEnd = false,
+                                    backgroundContent = {
+                                        val isSwiping = dismissState.targetValue == SwipeToDismissBoxValue.EndToStart || dismissState.currentValue == SwipeToDismissBoxValue.EndToStart
+                                        if (isSwiping) {
+                                            Box(
+                                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(18.dp)).background(Brush.linearGradient(listOf(Color(0xFFAA0000), Color(0xFFEE3333)))).padding(end = 24.dp),
+                                                contentAlignment = Alignment.CenterEnd
+                                            ) {
+                                                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                                    Icon(Icons.Rounded.Delete, null, tint = Color.White, modifier = Modifier.size(24.dp))
+                                                    Text(stringResource(R.string.delete), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+                                        }
                                     },
-                            )
-
-                            IconButton(onClick = { viewModel.removeChannelFromFolder(channel) }) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Delete,
-                                    contentDescription = stringResource(R.string.delete),
-                                    tint = YouTubeRed.copy(alpha = 0.8f)
+                                    content = {
+                                        ChannelCard(
+                                            channel    = channel,
+                                            isDragging = isDragging,
+                                            onClick    = { viewModel.openChannel(channel) },
+                                            modifier   = Modifier
+                                                .fillMaxWidth()
+                                                .detectReorderAfterLongPress(reorderState)
+                                                .graphicsLayer {
+                                                    scaleX = if (isDragging) 1.03f else 1f
+                                                    scaleY = if (isDragging) 1.03f else 1f
+                                                },
+                                        )
+                                    }
                                 )
                             }
                         }
                     }
-                }
+                } else {
+                    // ── محتوى تبويب القوائم ──
+                    if (playlists.isNotEmpty()) {
+                        item(key = "header_playlists") {
+                            Text(
+                                text     = stringResource(R.string.playlists),
+                                style    = MaterialTheme.typography.titleMedium,
+                                color    = Color.White,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            )
+                        }
 
-                // ── قسم قوائم التشغيل ──
-                if (playlists.isNotEmpty()) {
-                    item {
-                        Text(
-                            text     = "${stringResource(R.string.playlists)} (${playlists.size})",
-                            style    = MaterialTheme.typography.titleMedium,
-                            color    = Color.White,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        )
-                    }
-                    items(playlists, key = { "pl_${it.id}" }) { playlist ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                        ) {
-                            PlaylistCard(
-                                playlist = playlist,
-                                onClick  = { viewModel.openPlaylist(playlist) },
-                                modifier = Modifier.weight(1f),
+                        items(playlists, key = { "pl_${it.id}" }) { playlist ->
+                            val dismissState = rememberSwipeToDismissBoxState(
+                                confirmValueChange = {
+                                    if (it == SwipeToDismissBoxValue.EndToStart) {
+                                        playlistToRemove = playlist // إظهار نافذة التأكيد
+                                        false
+                                    } else false
+                                }
                             )
 
-                            IconButton(onClick = { viewModel.removePlaylistFromFolder(playlist) }) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Delete,
-                                    contentDescription = stringResource(R.string.delete),
-                                    tint = YouTubeRed.copy(alpha = 0.8f)
+                            Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                                SwipeToDismissBox(
+                                    state = dismissState,
+                                    enableDismissFromStartToEnd = false,
+                                    backgroundContent = {
+                                        val isSwiping = dismissState.targetValue == SwipeToDismissBoxValue.EndToStart || dismissState.currentValue == SwipeToDismissBoxValue.EndToStart
+                                        if (isSwiping) {
+                                            Box(
+                                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(18.dp)).background(Brush.linearGradient(listOf(Color(0xFFAA0000), Color(0xFFEE3333)))).padding(end = 24.dp),
+                                                contentAlignment = Alignment.CenterEnd
+                                            ) {
+                                                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                                    Icon(Icons.Rounded.Delete, null, tint = Color.White, modifier = Modifier.size(24.dp))
+                                                    Text(stringResource(R.string.delete), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+                                        }
+                                    },
+                                    content = {
+                                        PlaylistCard(
+                                            playlist = playlist,
+                                            onClick  = { viewModel.openPlaylist(playlist) },
+                                            modifier = Modifier.fillMaxWidth(),
+                                        )
+                                    }
                                 )
                             }
                         }
@@ -246,7 +317,7 @@ fun FolderDetailScreen(
                 }
 
                 if (isLoading) {
-                    item {
+                    item(key = "loading_indicator") {
                         Box(
                             modifier = Modifier.fillMaxWidth().padding(24.dp),
                             contentAlignment = Alignment.Center,
@@ -282,6 +353,51 @@ fun FolderDetailScreen(
                 }
             )
         }
+
+        // ── نوافذ التأكيد على الحذف ──
+        channelToRemove?.let { channel ->
+            AlertDialog(
+                onDismissRequest = { channelToRemove = null },
+                containerColor   = MaterialTheme.colorScheme.surface,
+                shape            = RoundedCornerShape(24.dp),
+                title  = { Text(stringResource(R.string.delete_channel_title), color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
+                text   = { Text(stringResource(R.string.remove_from_folder_desc), color = MaterialTheme.colorScheme.onSurface.copy(0.7f)) },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.removeChannelFromFolder(channel)
+                            channelToRemove = null
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF4455)),
+                    ) { Text(stringResource(R.string.delete), color = Color.White) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { channelToRemove = null }) { Text(stringResource(R.string.cancel)) }
+                }
+            )
+        }
+
+        playlistToRemove?.let { playlist ->
+            AlertDialog(
+                onDismissRequest = { playlistToRemove = null },
+                containerColor   = MaterialTheme.colorScheme.surface,
+                shape            = RoundedCornerShape(24.dp),
+                title  = { Text(stringResource(R.string.delete_playlist_title), color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
+                text   = { Text(stringResource(R.string.remove_from_folder_desc), color = MaterialTheme.colorScheme.onSurface.copy(0.7f)) },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.removePlaylistFromFolder(playlist)
+                            playlistToRemove = null
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF4455)),
+                    ) { Text(stringResource(R.string.delete), color = Color.White) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { playlistToRemove = null }) { Text(stringResource(R.string.cancel)) }
+                }
+            )
+        }
     }
 }
 
@@ -296,10 +412,8 @@ fun AddItemsDialog(
     var selectedPlaylistIds by remember { mutableStateOf(setOf<String>()) }
     var tabIndex by remember { mutableIntStateOf(0) }
 
-    // ✅ إضافة حالة البحث
     var searchQuery by remember { mutableStateOf("") }
 
-    // ✅ مسح نص البحث عند تغيير التبويبات
     LaunchedEffect(tabIndex) {
         searchQuery = ""
     }
@@ -336,7 +450,6 @@ fun AddItemsDialog(
 
                 Spacer(Modifier.height(8.dp))
 
-                // ✅ مربع البحث (يظهر دائماً ويتغير محتواه حسب التبويب)
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -361,11 +474,9 @@ fun AddItemsDialog(
 
                 LazyColumn(modifier = Modifier.weight(1f)) {
                     if (tabIndex == 0) {
-                        // ✅ فلترة القنوات
                         item {
                             val filteredChannels = if (searchQuery.isBlank()) availableChannels else availableChannels.filter { it.title.contains(searchQuery, ignoreCase = true) }
 
-                            // صف التحديد الذكي
                             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                 Text("${selectedChannelIds.size}/${availableChannels.size} ${stringResource(R.string.selected_label)}", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(0.5f))
                                 val filteredIds = filteredChannels.map { it.id }.toSet()
@@ -414,11 +525,9 @@ fun AddItemsDialog(
                             )
                         }
                     } else {
-                        // ✅ فلترة القوائم
                         item {
                             val filteredPlaylists = if (searchQuery.isBlank()) availablePlaylists else availablePlaylists.filter { it.title.contains(searchQuery, ignoreCase = true) }
 
-                            // صف التحديد الذكي
                             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                 Text("${selectedPlaylistIds.size}/${availablePlaylists.size} ${stringResource(R.string.selected_label)}", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(0.5f))
                                 val filteredIds = filteredPlaylists.map { it.id }.toSet()

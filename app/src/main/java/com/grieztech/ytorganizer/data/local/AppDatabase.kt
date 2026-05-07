@@ -6,16 +6,8 @@ import com.grieztech.ytorganizer.models.Folder
 import com.grieztech.ytorganizer.models.Playlist
 import kotlinx.coroutines.flow.Flow
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  GriezTech - Local Database
-//  ✅ FIX: كل query مُقيَّدة بـ accountId
-// ═══════════════════════════════════════════════════════════════════════════
-
-// ── DAO للمجلدات ──────────────────────────────────────────────────────────
 @Dao
 interface FolderDao {
-
-    // ✅ فقط مجلدات الحساب الحالي
     @Query("SELECT * FROM folders WHERE accountId = :accountId ORDER BY position ASC")
     fun getFoldersForAccount(accountId: String): Flow<List<Folder>>
 
@@ -42,20 +34,21 @@ interface FolderDao {
     @Query("SELECT COUNT(*) FROM folders WHERE accountId = :accountId")
     suspend fun getFolderCountForAccount(accountId: String): Int
 
-    // ✅ حذف كل بيانات حساب معين عند تسجيل الخروج
+    @Query("SELECT COUNT(*) FROM folders WHERE accountId = :accountId")
+    fun getFolderCountForAccountFlow(accountId: String): Flow<Int>
+
     @Query("DELETE FROM folders WHERE accountId = :accountId")
     suspend fun deleteAllForAccount(accountId: String)
+
+    @Query("UPDATE folders SET accountId = :newAccountId WHERE accountId = ''")
+    suspend fun claimOrphanedFolders(newAccountId: String)
 }
 
-// ── DAO للقنوات ───────────────────────────────────────────────────────────
 @Dao
 interface ChannelDao {
-
-    // ✅ فقط قنوات المجلد + الحساب
     @Query("SELECT * FROM channels WHERE folderId = :folderId AND accountId = :accountId ORDER BY position ASC")
     fun getChannelsInFolder(folderId: Long, accountId: String): Flow<List<Channel>>
 
-    // ✅ كل قنوات الحساب
     @Query("SELECT * FROM channels WHERE accountId = :accountId ORDER BY position ASC")
     fun getAllChannelsForAccount(accountId: String): Flow<List<Channel>>
 
@@ -83,18 +76,27 @@ interface ChannelDao {
     @Query("UPDATE channels SET position = :position WHERE id = :id AND accountId = :accountId")
     suspend fun updateChannelPosition(id: String, position: Int, accountId: String)
 
+    // ✅ الحل الجذري لمشكلة الترتيب المتعدد
+    @Transaction
+    suspend fun updatePositions(channels: List<Channel>) {
+        channels.forEachIndexed { index, channel -> updateChannelPosition(channel.id, index, channel.accountId) }
+    }
+
     @Query("SELECT COUNT(*) FROM channels WHERE folderId = :folderId AND accountId = :accountId")
     suspend fun getChannelCountInFolder(folderId: Long, accountId: String): Int
 
-    // ✅ حذف كل قنوات حساب عند تسجيل الخروج
+    @Query("SELECT COUNT(*) FROM channels WHERE accountId = :accountId")
+    fun getChannelCountForAccountFlow(accountId: String): Flow<Int>
+
     @Query("DELETE FROM channels WHERE accountId = :accountId")
     suspend fun deleteAllForAccount(accountId: String)
+
+    @Query("UPDATE channels SET accountId = :newAccountId WHERE accountId = ''")
+    suspend fun claimOrphanedChannels(newAccountId: String)
 }
 
-// ── DAO لقوائم التشغيل ────────────────────────────────────────────────────
 @Dao
 interface PlaylistDao {
-
     @Query("SELECT * FROM playlists WHERE folderId = :folderId AND accountId = :accountId ORDER BY position ASC")
     fun getPlaylistsInFolder(folderId: Long, accountId: String): Flow<List<Playlist>>
 
@@ -113,15 +115,27 @@ interface PlaylistDao {
     @Query("UPDATE playlists SET folderId = :newFolderId, position = :position WHERE id = :playlistId AND accountId = :accountId")
     suspend fun movePlaylist(playlistId: String, newFolderId: Long, position: Int, accountId: String)
 
-    // ✅ حذف كل قوائم حساب
+    @Query("UPDATE playlists SET position = :position WHERE id = :playlistId AND accountId = :accountId")
+    suspend fun updatePlaylistPosition(playlistId: String, position: Int, accountId: String)
+
+    @Transaction
+    suspend fun updatePositions(playlists: List<Playlist>) {
+        playlists.forEachIndexed { index, playlist -> updatePlaylistPosition(playlist.id, index, playlist.accountId) }
+    }
+
+    @Query("SELECT COUNT(*) FROM playlists WHERE accountId = :accountId")
+    fun getPlaylistCountForAccountFlow(accountId: String): Flow<Int>
+
     @Query("DELETE FROM playlists WHERE accountId = :accountId")
     suspend fun deleteAllForAccount(accountId: String)
+
+    @Query("UPDATE playlists SET accountId = :newAccountId WHERE accountId = ''")
+    suspend fun claimOrphanedPlaylists(newAccountId: String)
 }
 
-// ── قاعدة البيانات ────────────────────────────────────────────────────────
 @Database(
     entities     = [Folder::class, Channel::class, Playlist::class],
-    version      = 2,           // ✅ رُفّع إلى 2 بسبب إضافة accountId
+    version      = 2,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -6,6 +6,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.grieztech.ytorganizer.data.api.YouTubeApiService
 import com.grieztech.ytorganizer.data.api.YouTubeAuthManager
+import com.grieztech.ytorganizer.data.remote.RemoteConfigManager
 import com.grieztech.ytorganizer.data.local.AppDatabase
 import com.grieztech.ytorganizer.data.local.ChannelDao
 import com.grieztech.ytorganizer.data.local.FolderDao
@@ -84,4 +85,7 @@ object AppModule {
     @Provides @Singleton
     fun provideYouTubeApi(retrofit: Retrofit): YouTubeApiService =
         retrofit.create(YouTubeApiService::class.java)
+
+    @Provides @Singleton
+    fun provideRemoteConfig(): RemoteConfigManager = RemoteConfigManager()
 }

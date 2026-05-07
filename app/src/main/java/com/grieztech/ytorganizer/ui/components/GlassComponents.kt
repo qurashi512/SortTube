@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.*
@@ -217,6 +218,25 @@ fun GlassTopBar(
                 }
             }
             Row(content = actions)
+        }
+    }
+}
+
+@Composable
+fun FloatingBottomBar(onHomeClick: () -> Unit, onProfileClick: () -> Unit, onSettingsClick: () -> Unit, isSettingsActive: Boolean) {
+    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp).navigationBarsPadding(), contentAlignment = Alignment.Center) {
+        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, shadowElevation = 8.dp) {
+            Row(modifier = Modifier.padding(horizontal = 32.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(48.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onHomeClick, modifier = Modifier.size(40.dp)) {
+                    Icon(Icons.Rounded.Home, null, tint = if(!isSettingsActive) AccentPurple else MaterialTheme.colorScheme.onSurfaceVariant.copy(0.6f), modifier = Modifier.size(28.dp))
+                }
+                IconButton(onClick = onProfileClick, modifier = Modifier.size(40.dp)) {
+                    Icon(Icons.Rounded.AccountCircle, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.6f), modifier = Modifier.size(26.dp))
+                }
+                IconButton(onClick = onSettingsClick, modifier = Modifier.size(40.dp)) {
+                    Icon(Icons.Rounded.Settings, null, tint = if(isSettingsActive) AccentPurple else MaterialTheme.colorScheme.onSurfaceVariant.copy(0.6f), modifier = Modifier.size(26.dp))
+                }
+            }
         }
     }
 }

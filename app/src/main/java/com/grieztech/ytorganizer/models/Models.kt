@@ -9,7 +9,7 @@ import kotlinx.parcelize.Parcelize
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  GriezTech - Data Models
-//  ✅ FIX: أُضيف accountId لكل جدول لعزل بيانات كل حساب
+//  ✅ هذا الملف جاهز وممتاز: تم إضافة accountId بنجاح لكل جدول
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ── نموذج المجلد ──────────────────────────────────────────────────────────
@@ -21,7 +21,7 @@ import kotlinx.parcelize.Parcelize
 data class Folder(
     @PrimaryKey(autoGenerate = true)
     val id        : Long   = 0,
-    val accountId : String = "",                // ✅ جديد — Google account ID
+    val accountId : String = "",                // ✅ Google account ID
     val name      : String,
     val nameAr    : String = "",
     val emoji     : String = "📁",
@@ -46,7 +46,7 @@ data class Folder(
 data class Channel(
     @PrimaryKey
     val id             : String,
-    val accountId      : String = "",           // ✅ جديد
+    val accountId      : String = "",           // ✅
     val folderId       : Long,
     val title          : String,
     val description    : String = "",
@@ -72,7 +72,7 @@ data class Channel(
 data class Playlist(
     @PrimaryKey
     val id           : String,
-    val accountId    : String = "",             // ✅ جديد
+    val accountId    : String = "",             // ✅
     val folderId     : Long,
     val title        : String,
     val description  : String = "",

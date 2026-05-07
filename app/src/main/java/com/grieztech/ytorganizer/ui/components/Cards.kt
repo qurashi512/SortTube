@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -41,91 +42,90 @@ fun FolderCard(
     folder      : Folder,
     channelCount: Int,
     onClick     : () -> Unit,
+    onEdit      : () -> Unit = {},
     onLongPress : () -> Unit = {},
     isDragging  : Boolean   = false,
     modifier    : Modifier  = Modifier,
+    dragHandle  : Modifier  = Modifier,
 ) {
     val folderColor = remember(folder.color) {
-        try { Color(folder.color.toColorInt()) } catch (e: Exception) { Color(0xFFFF4444) }
+        try { Color(folder.color.toColorInt()) } catch (e: Exception) { Color(0xFF9B6FFF) }
     }
 
-    val elevation by animateColorAsState(
-        targetValue  = if (isDragging) folderColor.copy(0.5f) else Color.Transparent,
-        animationSpec = spring(),
-        label        = "drag_elevation",
+    val cardGradient = Brush.linearGradient(
+        colors = listOf(
+            folderColor.copy(alpha = if (isDragging) 0.45f else 0.30f),
+            folderColor.copy(alpha = 0.10f),
+            Color(0xFF0D0D1F).copy(alpha = 0.60f),
+        )
     )
 
     GlassCard(
-        modifier     = modifier
-            .fillMaxWidth()
-            .height(100.dp),
-        cornerRadius = 24.dp,
+        modifier     = modifier.fillMaxWidth().height(88.dp),
+        cornerRadius = 20.dp,
         onClick      = onClick,
-        onLongClick  = onLongPress.takeIf { true },  // ✅ إصلاح 2b: تمرير long press
+        onLongClick  = onLongPress.takeIf { true },
     ) {
-        // خلفية ملونة خفيفة
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(
-                            folderColor.copy(alpha = 0.25f),
-                            folderColor.copy(alpha = 0.05f),
-                        )
-                    )
-                )
-        )
+        Box(modifier = Modifier.fillMaxSize().background(cardGradient))
 
         Row(
-            modifier  = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier  = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                // أيقونة المجلد
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(52.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(folderColor.copy(alpha = 0.25f)),
-                ) {
-                    Text(text = folder.emoji, style = MaterialTheme.typography.headlineSmall)
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+
+                Box(contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(48.dp).clip(RoundedCornerShape(13.dp))
+                        .background(folderColor.copy(alpha = 0.22f))
+                        .then(dragHandle)) {
+                    Text(text = folder.emoji, style = MaterialTheme.typography.titleLarge)
                 }
 
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(
                         text     = folder.name,
                         style    = MaterialTheme.typography.titleMedium,
-                        color    = MaterialTheme.colorScheme.onSurface,
+                        color    = Color.White,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                     )
-                    Text(
-                        text  = "$channelCount ${stringResource(R.string.channel_word)}", // ✅ الترجمة هنا
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Box(modifier = Modifier.size(6.dp).clip(CircleShape)
+                            .background(folderColor))
+                        Text(
+                            text  = "$channelCount ${stringResource(R.string.channel_word)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.55f),
+                        )
+                    }
                 }
             }
 
-            Icon(
-                imageVector        = Icons.Rounded.ChevronRight,
-                contentDescription = null,
-                tint               = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onEdit) {
+                    Icon(
+                        imageVector = Icons.Rounded.Edit,
+                        contentDescription = stringResource(R.string.edit),
+                        tint = Color.White.copy(alpha = 0.6f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Icon(
+                    imageVector        = Icons.Rounded.ChevronRight,
+                    contentDescription = null,
+                    tint               = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                )
+            }
         }
     }
 }
 
 /**
- * بطاقة القناة الزجاجية
+ * بطاقة القناة الزجاجية (تم إزالة أيقونة السحب بناءً على طلبك)
  */
 @Composable
 fun ChannelCard(
@@ -147,7 +147,6 @@ fun ChannelCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // صورة القناة
             AsyncImage(
                 model       = channel.thumbnailUrl,
                 contentDescription = channel.title,
@@ -170,19 +169,11 @@ fun ChannelCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text  = "${formatCount(channel.subscriberCount)} ${stringResource(R.string.subscriber_word)}", // ✅ الترجمة هنا
+                    text  = "${formatCount(channel.subscriberCount)} ${stringResource(R.string.subscriber_word)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 )
             }
-
-            // أيقونة السحب
-            Icon(
-                imageVector        = Icons.Rounded.DragHandle,
-                contentDescription = "سحب",
-                tint               = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                modifier           = Modifier.size(20.dp),
-            )
         }
     }
 }
@@ -202,7 +193,6 @@ fun VideoCard(
         onClick      = onClick,
     ) {
         Column {
-            // صورة مصغرة للفيديو
             AsyncImage(
                 model        = video.thumbnailUrl,
                 contentDescription = video.title,
@@ -233,7 +223,6 @@ fun VideoCard(
     }
 }
 
-// ── دالة مساعدة لتنسيق الأرقام الكبيرة ──
 private fun formatCount(count: Long): String = when {
     count >= 1_000_000 -> String.format("%.1fM", count / 1_000_000.0)
     count >= 1_000     -> String.format("%.1fK", count / 1_000.0)
@@ -241,7 +230,7 @@ private fun formatCount(count: Long): String = when {
 }
 
 /**
- * ✅ إصلاح 1: بطاقة قائمة التشغيل
+ * بطاقة قائمة التشغيل
  */
 @Composable
 fun PlaylistCard(
@@ -261,7 +250,6 @@ fun PlaylistCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // صورة مصغرة
             AsyncImage(
                 model        = playlist.thumbnailUrl,
                 contentDescription = playlist.title,
@@ -284,7 +272,7 @@ fun PlaylistCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text  = "${playlist.itemCount} ${stringResource(R.string.video_word)} · ${playlist.channelTitle}", // ✅ الترجمة هنا
+                    text  = "${playlist.itemCount} ${stringResource(R.string.video_word)} · ${playlist.channelTitle}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     maxLines = 1,

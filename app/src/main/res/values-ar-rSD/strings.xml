@@ -74,10 +74,35 @@
     <string name="crafted_by_full">صُنع بـ ❤️ بواسطة Gorashe Mohamed</string>
     <string name="splash_subtitle">نظّم مقاطعك بأسلوب احترافي</string>
     <string name="splash_crafted_by">Crafted with ❤️ by Gorashe</string>
-    <string name="all_folder">الكل</string>
     <string name="import_summary">قنوات: %1$d | قوائم: %2$d ✔</string>
-    <string name="search_hint">بحث</string>
+    <string name="search_hint">بحث…</string>
     <string name="edit">تعديل</string>
     <string name="save">حفظ</string>
     <string name="edit_folder">تعديل المجلد</string>
+    <string name="folder_exists_error">يوجد مجلد بهذا الاسم مسبقاً!</string>
+    <string name="all_folder">كل القنوات</string>
+    <string name="sync_channels_new">✓ تم استيراد %1$d قناة جديدة</string>
+    <string name="sync_channels_empty">✓ لا توجد قنوات جديدة</string>
+    <string name="sync_playlists_new">✓ تم استيراد %1$d قائمة جديدة</string>
+    <string name="sync_playlists_empty">✓ لا توجد قوائم جديدة</string>
+    <string name="sync_all_success">✓ %1$d قناة و %2$d قائمة</string>
+    <string name="sync_error_msg">فشل الاستيراد: %1$s</string>
+    <string name="sync_partial_error">فشل جزئي في الاستيراد، تحقق من الاتصال</string>
+    <string name="folder_create_failed">فشل إنشاء المجلد: %1$s</string>
+    <string name="delete_channel_title">حذف القناة؟</string>
+    <string name="delete_playlist_title">حذف القائمة؟</string>
+    <string name="remove_from_folder_desc">سيتم إزالتها من المجلد بشكل نهائي. لا يمكن التراجع عن هذا الإجراء.</string>
+    <string name="delete_channel_permanent_title">حذف القناة؟</string>
+    <string name="delete_channel_permanent_desc">سيتم حذف القناة نهائياً من التطبيق. لا يمكن التراجع.</string>
+    <string name="remove_channel_folder_title">إزالة القناة؟</string>
+    <string name="remove_channel_folder_desc">سيتم إزالة القناة من هذا المجلد وإعادتها لمجلد جميع القنوات.</string>
+
+    <string name="delete_playlist_permanent_title">حذف القائمة؟</string>
+    <string name="delete_playlist_permanent_desc">سيتم حذف القائمة نهائياً من التطبيق. لا يمكن التراجع.</string>
+    <string name="remove_playlist_folder_title">إزالة القائمة؟</string>
+    <string name="remove_playlist_folder_desc">سيتم إزالة القائمة من هذا المجلد وإعادتها لمجلد جميع القنوات.</string>
+
+    <string name="items_already_exist_warning">بعض العناصر المحددة موجودة بالفعل في مجلدات أخرى (%1$s).\nهل تريد نقلها إلى هذا المجلد؟</string>
+    <string name="confirm_move_title">تأكيد النقل</string>
+    <string name="move_action">نقل</string>
 </resources>

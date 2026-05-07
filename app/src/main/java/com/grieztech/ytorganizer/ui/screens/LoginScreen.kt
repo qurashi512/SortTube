@@ -88,7 +88,10 @@ fun LoginScreen(
             viewModel.onGoogleSignInResult(account) {
                 // ✅ أبلغ HomeViewModel بالحساب الجديد
                 //    إذا تغيّر الحساب يمسح القديم، وإذا نفس الحساب تظهر المجلدات مباشرة
-                homeViewModel.onLoginSuccess(account?.id ?: "")
+                // ✅ نرسل email لأنه دائماً موجود وغير null
+                //    بخلاف account.id الذي قد يكون null
+                val accountEmail = account?.email ?: ""
+                homeViewModel.checkAndClearIfAccountChanged(accountEmail)
                 onLoginSuccess()
             }
         } catch (e: ApiException) {
