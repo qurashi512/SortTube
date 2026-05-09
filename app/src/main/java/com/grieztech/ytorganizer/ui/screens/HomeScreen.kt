@@ -120,10 +120,16 @@ fun HomeScreen(
     var pendingFolder by remember { mutableStateOf<PendingFolder?>(null) }
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        val glassColors = LocalGlassColors.current
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawRect(brush = Brush.radialGradient(
-                colors = listOf(GradientEnd.copy(alpha = 0.95f), GradientStart, GradientMid),
-                center = Offset(size.width * 0.3f, size.height * 0.2f), radius = size.width * 1.2f))
+                colors = listOf(
+                    glassColors.gradientEnd.copy(alpha = 0.95f),
+                    glassColors.gradientStart,
+                    glassColors.gradientMid,
+                ),
+                center = Offset(size.width * 0.3f, size.height * 0.2f),
+                radius = size.width * 1.2f))
         }
 
         Scaffold(
@@ -218,35 +224,54 @@ fun HomeScreen(
                     LazyColumn(state = reorderState.listState, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 80.dp), verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxSize().reorderable(reorderState)) {
                         items(filteredFolders, key = { it.id }) { folder ->
                             ReorderableItem(reorderState, key = folder.id) { isDragging ->
-                                val dismissState = rememberSwipeToDismissBoxState(
-                                    confirmValueChange = {
-                                        if (it == SwipeToDismissBoxValue.EndToStart) { folderToDelete = folder; false } else false
-                                    }
-                                )
-                                SwipeToDismissBox(
-                                    state = dismissState, enableDismissFromStartToEnd = false,
-                                    backgroundContent = {
-                                        val isSwiping = dismissState.targetValue == SwipeToDismissBoxValue.EndToStart || dismissState.currentValue == SwipeToDismissBoxValue.EndToStart
-                                        if (isSwiping) {
-                                            Box(
-                                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(20.dp)).background(Brush.linearGradient(listOf(Color(0xFFAA0000), Color(0xFFEE3333)))).padding(end = 28.dp),
-                                                contentAlignment = Alignment.CenterEnd
-                                            ) {
-                                                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                                    Icon(Icons.Rounded.Delete, null, tint = Color.White, modifier = Modifier.size(24.dp))
-                                                    Text(stringResource(R.string.delete), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                val isProtected = folder.name.equals("All Channels", ignoreCase = true) ||
+                                        folder.name == allFolderStr
+
+                                if (isProtected) {
+                                    // ── المجلد المحمي: بدون سحب للمسح وبدون زر تعديل ──
+                                    FolderCard(
+                                        folder       = folder,
+                                        channelCount = channelCounts[folder.id] ?: 0,
+                                        isDragging   = false,
+                                        isProtected  = true,
+                                        onClick      = { onFolderClick(folder) },
+                                    )
+                                } else {
+                                    // ── المجلدات العادية: سحب للمسح + زر تعديل ──
+                                    val dismissState = rememberSwipeToDismissBoxState(
+                                        confirmValueChange = {
+                                            if (it == SwipeToDismissBoxValue.EndToStart) { folderToDelete = folder; false } else false
+                                        }
+                                    )
+                                    SwipeToDismissBox(
+                                        state = dismissState, enableDismissFromStartToEnd = false,
+                                        backgroundContent = {
+                                            val isSwiping = dismissState.targetValue == SwipeToDismissBoxValue.EndToStart || dismissState.currentValue == SwipeToDismissBoxValue.EndToStart
+                                            if (isSwiping) {
+                                                Box(
+                                                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(20.dp)).background(Brush.linearGradient(listOf(Color(0xFFAA0000), Color(0xFFEE3333)))).padding(end = 28.dp),
+                                                    contentAlignment = Alignment.CenterEnd
+                                                ) {
+                                                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                                        Icon(Icons.Rounded.Delete, null, tint = Color.White, modifier = Modifier.size(24.dp))
+                                                        Text(stringResource(R.string.delete), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                    }
                                                 }
                                             }
+                                        },
+                                        content = {
+                                            FolderCard(
+                                                folder       = folder,
+                                                channelCount = channelCounts[folder.id] ?: 0,
+                                                isDragging   = isDragging,
+                                                isProtected  = false,
+                                                onClick      = { onFolderClick(folder) },
+                                                onEdit       = { folderToEdit = folder },
+                                                modifier     = Modifier.detectReorderAfterLongPress(reorderState),
+                                            )
                                         }
-                                    },
-                                    content = {
-                                        FolderCard(
-                                            folder = folder, channelCount = channelCounts[folder.id] ?: 0, isDragging = isDragging,
-                                            onClick = { onFolderClick(folder) }, onLongPress = { folderToEdit = folder },
-                                            modifier = Modifier.detectReorderAfterLongPress(reorderState),
-                                        )
-                                    }
-                                )
+                                    )
+                                }
                             }
                         }
                     }
@@ -299,7 +324,7 @@ fun HomeScreen(
             onClearError = { viewModel.clearFolderCreateError() },
             onConfirm = { name, emoji, color, chIds, plIds ->
                 // ✅ استدعاء التحقق الذكي قبل الحفظ الفعلي
-                viewModel.checkItemsBeforeCreatingFolder(chIds, plIds,
+                viewModel.checkItemsBeforeCreatingFolder(name, chIds, plIds,
                     onWarningNeeded = { msg ->
                         moveWarningMessage = msg
                         pendingFolder = PendingFolder(name, emoji, color, chIds, plIds)
@@ -353,12 +378,42 @@ fun HomeScreen(
 
 @Composable
 private fun FloatingBottomBar(onHomeClick: () -> Unit, onProfileClick: () -> Unit, onSettingsClick: () -> Unit) {
-    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp).navigationBarsPadding(), contentAlignment = Alignment.Center) {
-        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, shadowElevation = 8.dp) {
-            Row(modifier = Modifier.padding(horizontal = 32.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(48.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onHomeClick, modifier = Modifier.size(40.dp)) { Icon(Icons.Rounded.Home, null, tint = AccentPurple, modifier = Modifier.size(28.dp)) }
-                IconButton(onClick = onProfileClick, modifier = Modifier.size(40.dp)) { Icon(Icons.Rounded.AccountCircle, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.6f), modifier = Modifier.size(26.dp)) }
-                IconButton(onClick = onSettingsClick, modifier = Modifier.size(40.dp)) { Icon(Icons.Rounded.Settings, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.6f), modifier = Modifier.size(26.dp)) }
+    val isDark      = !MaterialTheme.colorScheme.background.luminance().let { it > 0.5f }
+    val barColor    = if (isDark) Color(0xFF2A2A2A) else Color(0xFFFFFFFF)
+    val activeColor = if (isDark) Color(0xFF484848) else Color(0xFFE8E8E8)
+    val iconActive  = if (isDark) Color.White       else Color(0xFF1A1A1A)
+    val iconInactive= if (isDark) Color.White.copy(0.55f) else Color(0xFF1A1A1A).copy(0.45f)
+
+    Box(
+        modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = barColor,
+            shadowElevation = if (isDark) 12.dp else 8.dp,
+            tonalElevation = 0.dp,
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier.height(52.dp).width(64.dp).clip(CircleShape)
+                        .background(activeColor).clickable(onClick = onHomeClick),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Rounded.Home, null, tint = iconActive, modifier = Modifier.size(26.dp)) }
+                Box(
+                    modifier = Modifier.height(52.dp).width(64.dp).clip(CircleShape)
+                        .clickable(onClick = onProfileClick),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Rounded.AccountCircle, null, tint = iconInactive, modifier = Modifier.size(26.dp)) }
+                Box(
+                    modifier = Modifier.height(52.dp).width(64.dp).clip(CircleShape)
+                        .clickable(onClick = onSettingsClick),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Rounded.Settings, null, tint = iconInactive, modifier = Modifier.size(26.dp)) }
             }
         }
     }
@@ -387,7 +442,7 @@ private fun AddFolderDialog(
     var selectedPlaylists by remember { mutableStateOf(setOf<String>()) }
     var currentTab by remember { mutableStateOf(0) }
     var searchQuery by remember { mutableStateOf("") }
-    val emojis = listOf("📁","🎵","🎮","📚","🏋️","🍳","✈️","💻","🎬","🔬","📰","🎨","🌍","📈","📖","⚽","🏀","🍔","🍕","🚗","🚀","🔥","✨","💡")
+    val emojis = listOf("📁","🎵","🎮","📚","🏋️","🍳","✈️","💻","🎬","🔬","📰","🎨","🌍","📈","📖","⚽","🕋","🍔","🇩🇪","🚗","🚀","🔥","🇺🇸","💡")
     val colors = listOf("#FF4444","#FF8800","#FFCC00","#44CC88","#4488FF","#8855FF","#FF44AA","#00CCBB")
 
     AlertDialog(
@@ -458,7 +513,7 @@ private fun AddFolderDialog(
 private fun EditFolderDialog(folder: Folder, onConfirm: (String, String) -> Unit, onDismiss: () -> Unit) {
     var folderName by remember { mutableStateOf(folder.name) }
     var selectedEmoji by remember { mutableStateOf(folder.emoji) }
-    val emojis = listOf("📁","🎵","🎮","📚","🏋️","🍳","✈️","💻","🎬","🔬","📰","🎨","🌍","📈","📖","⚽","🏀","🍔","🍕","🚗","🚀","🔥","✨","💡")
+    val emojis = listOf("📁","🎵","🎮","📚","🏋️","🍳","✈️","💻","🎬","🔬","📰","🎨","🌍","📈","📖","⚽","🕋","🍔","🇩🇪","🚗","🚀","🔥","🇺🇸","💡")
     AlertDialog(
         onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(24.dp),
         title = { Text(stringResource(R.string.edit_folder), color = MaterialTheme.colorScheme.onSurface) },

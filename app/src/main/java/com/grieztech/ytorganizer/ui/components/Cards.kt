@@ -45,6 +45,7 @@ fun FolderCard(
     onEdit      : () -> Unit = {},
     onLongPress : () -> Unit = {},
     isDragging  : Boolean   = false,
+    isProtected : Boolean   = false,
     modifier    : Modifier  = Modifier,
     dragHandle  : Modifier  = Modifier,
 ) {
@@ -52,19 +53,33 @@ fun FolderCard(
         try { Color(folder.color.toColorInt()) } catch (e: Exception) { Color(0xFF9B6FFF) }
     }
 
-    val cardGradient = Brush.linearGradient(
-        colors = listOf(
-            folderColor.copy(alpha = if (isDragging) 0.45f else 0.30f),
-            folderColor.copy(alpha = 0.10f),
-            Color(0xFF0D0D1F).copy(alpha = 0.60f),
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+
+    val cardGradient = if (isDark) {
+        // ✅ الوضع الداكن: تدرج أغمق مع لون المجلد
+        Brush.linearGradient(
+            colors = listOf(
+                folderColor.copy(alpha = if (isDragging) 0.45f else 0.30f),
+                folderColor.copy(alpha = 0.10f),
+                Color(0xFF0D0D1F).copy(alpha = 0.60f),
+            )
         )
-    )
+    } else {
+        // ✅ الوضع الفاتح: تدرج خفيف جداً يبدأ من اليسار وينتهي شفاف
+        Brush.linearGradient(
+            colors = listOf(
+                folderColor.copy(alpha = if (isDragging) 0.18f else 0.10f),
+                folderColor.copy(alpha = 0.04f),
+                Color.Transparent,
+            )
+        )
+    }
 
     GlassCard(
         modifier     = modifier.fillMaxWidth().height(88.dp),
         cornerRadius = 20.dp,
         onClick      = onClick,
-        onLongClick  = onLongPress.takeIf { true },
+        onLongClick  = null,
     ) {
         Box(modifier = Modifier.fillMaxSize().background(cardGradient))
 
@@ -78,7 +93,7 @@ fun FolderCard(
 
                 Box(contentAlignment = Alignment.Center,
                     modifier = Modifier.size(48.dp).clip(RoundedCornerShape(13.dp))
-                        .background(folderColor.copy(alpha = 0.22f))
+                        .background(folderColor.copy(alpha = if (isDark) 0.22f else 0.12f))
                         .then(dragHandle)) {
                     Text(text = folder.emoji, style = MaterialTheme.typography.titleLarge)
                 }
@@ -87,7 +102,7 @@ fun FolderCard(
                     Text(
                         text     = folder.name,
                         style    = MaterialTheme.typography.titleMedium,
-                        color    = Color.White,
+                        color    = if (isDark) Color.White else Color(0xFF2E2820),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
@@ -95,24 +110,26 @@ fun FolderCard(
                     Row(verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Box(modifier = Modifier.size(6.dp).clip(CircleShape)
-                            .background(folderColor))
+                            .background(folderColor.copy(alpha = if (isDark) 1f else 0.6f)))
                         Text(
                             text  = "$channelCount ${stringResource(R.string.channel_word)}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.55f),
+                            color = if (isDark) Color.White.copy(alpha = 0.55f) else Color(0xFF2E2820).copy(alpha = 0.5f),
                         )
                     }
                 }
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onEdit) {
-                    Icon(
-                        imageVector = Icons.Rounded.Edit,
-                        contentDescription = stringResource(R.string.edit),
-                        tint = Color.White.copy(alpha = 0.6f),
-                        modifier = Modifier.size(20.dp)
-                    )
+                if (!isProtected) {
+                    IconButton(onClick = onEdit) {
+                        Icon(
+                            imageVector = Icons.Rounded.Edit,
+                            contentDescription = stringResource(R.string.edit),
+                            tint = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF2E2820).copy(alpha = 0.4f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
                 Icon(
                     imageVector        = Icons.Rounded.ChevronRight,

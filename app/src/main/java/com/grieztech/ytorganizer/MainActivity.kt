@@ -38,8 +38,15 @@ class MainActivity : ComponentActivity() {
 
     override fun attachBaseContext(newBase: Context) {
         val lang = runBlocking {
-            newBase.dataStore.data.map { it[KEY_LANG] ?: "ar" }.firstOrNull() ?: "ar"
+            newBase.dataStore.data.map { it[KEY_LANG] ?: "system" }.firstOrNull() ?: "system"
         }
+
+        // ✅ لما اللغة "system" → نستخدم لغة الجهاز الحقيقية من Resources بدون تعديل
+        if (lang == "system") {
+            super.attachBaseContext(newBase)
+            return
+        }
+
         val locale = Locale(lang)
         Locale.setDefault(locale)
         val config = Configuration(newBase.resources.configuration)
@@ -56,7 +63,7 @@ class MainActivity : ComponentActivity() {
             dataStore.data.map { it[KEY_THEME] ?: "system" }.firstOrNull() ?: "system"
         }
         val savedLang = runBlocking {
-            dataStore.data.map { it[KEY_LANG] ?: "ar" }.firstOrNull() ?: "ar"
+            dataStore.data.map { it[KEY_LANG] ?: "system" }.firstOrNull() ?: "system"
         }
 
         setContent {
@@ -94,6 +101,7 @@ class MainActivity : ComponentActivity() {
 
 object Destinations {
     const val SPLASH        = "splash"
+    const val ONBOARDING    = "onboarding" // تمت الإضافة هنا
     const val LOGIN         = "login"
     const val HOME          = "home"
     const val FOLDER_DETAIL = "folder/{folderId}/{folderName}/{folderEmoji}"
@@ -115,9 +123,8 @@ fun GriezTechNavHost(
     var selectedFolder by remember { mutableStateOf<Folder?>(null) }
 
     // ── Fade & Slide — تلاشٍ ناعم مع حركة خفيفة للأعلى ──
-    // مدة 380ms مع EaseInOutCubic لمنحنى طبيعي غير مقطوع
     val fadeDuration   = 380
-    val slideOffset    = 40   // بكسل — حركة خفيفة جداً، ليست قفزاً
+    val slideOffset    = 40
 
     val enterFade  = fadeIn( tween(fadeDuration, easing = EaseInOutCubic))
     val exitFade   = fadeOut(tween(fadeDuration, easing = EaseInOutCubic))
@@ -127,20 +134,44 @@ fun GriezTechNavHost(
     NavHost(
         navController    = navController,
         startDestination = Destinations.SPLASH,
-        // الدخول: يتلاشى ويصعد قليلاً من الأسفل
         enterTransition    = { enterFade + slideUp   },
-        // الخروج: يتلاشى فقط بدون حركة (شاشة المغادرة تختفي بهدوء)
         exitTransition     = { exitFade               },
-        // الرجوع: يتلاشى ويهبط قليلاً من الأعلى
         popEnterTransition = { enterFade + slideDown  },
-        // الرجوع-خروج: يتلاشى فقط
         popExitTransition  = { exitFade               },
     ) {
 
         composable(Destinations.SPLASH) {
             SplashScreen(onNavigateToLogin = {
-                val dest = if (isLoggedIn) Destinations.HOME else Destinations.LOGIN
+                // فحص هل رأى المستخدم شاشة الترحيب أم لا
+                val prefs = context.getSharedPreferences("grieztech_prefs", Context.MODE_PRIVATE)
+                val seenOnboarding = prefs.getBoolean("seen_onboarding", false)
+
+                // تحديد الوجهة بناءً على النتيجة
+                val dest = if (!seenOnboarding) {
+                    Destinations.ONBOARDING
+                } else if (isLoggedIn) {
+                    Destinations.HOME
+                } else {
+                    Destinations.LOGIN
+                }
+
                 navController.navigate(dest) { popUpTo(Destinations.SPLASH) { inclusive = true } }
+            })
+        }
+
+        // مسار شاشة الترحيب الجديدة
+        composable(Destinations.ONBOARDING) {
+            val prefs = context.getSharedPreferences("grieztech_prefs", Context.MODE_PRIVATE)
+
+            OnboardingScreen(onDone = {
+                // حفظ حالة رؤية الشاشة لتجنب إظهارها مرة أخرى
+                prefs.edit().putBoolean("seen_onboarding", true).apply()
+
+                // الانتقال إلى الرئيسية أو تسجيل الدخول بناءً على حالة الحساب
+                val dest = if (isLoggedIn) Destinations.HOME else Destinations.LOGIN
+                navController.navigate(dest) {
+                    popUpTo(Destinations.ONBOARDING) { inclusive = true }
+                }
             })
         }
 

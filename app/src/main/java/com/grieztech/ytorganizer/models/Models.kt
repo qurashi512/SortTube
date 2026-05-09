@@ -39,7 +39,7 @@ data class Folder(
         entity        = Folder::class,
         parentColumns = ["id"],
         childColumns  = ["folderId"],
-        onDelete      = ForeignKey.CASCADE,
+        onDelete      = ForeignKey.NO_ACTION, // ✅ لا تحذف القنوات — ننقلها يدوياً للمجلد الافتراضي
     )],
     indices = [Index("folderId"), Index("accountId")],  // ✅
 )
@@ -65,7 +65,7 @@ data class Channel(
         entity        = Folder::class,
         parentColumns = ["id"],
         childColumns  = ["folderId"],
-        onDelete      = ForeignKey.CASCADE,
+        onDelete      = ForeignKey.NO_ACTION, // ✅ لا تحذف البلايلست — ننقلها يدوياً للمجلد الافتراضي
     )],
     indices = [Index("folderId"), Index("accountId")],  // ✅
 )

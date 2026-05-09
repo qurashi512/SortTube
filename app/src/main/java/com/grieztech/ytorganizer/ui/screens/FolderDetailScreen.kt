@@ -20,6 +20,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -89,6 +90,8 @@ fun FolderDetailScreen(
 
     var showVideoPlayer by remember { mutableStateOf<Video?>(null) }
 
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+
     Scaffold(
         containerColor = Color.Transparent,
         floatingActionButton = {
@@ -106,21 +109,17 @@ fun FolderDetailScreen(
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
 
             Canvas(modifier = Modifier.fillMaxSize()) {
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        listOf(Color(0xFF0D0D1A), Color(0xFF12122A), Color(0xFF0A0A14))
-                    )
-                )
-                drawCircle(
-                    color = AccentPurple.copy(0.15f),
-                    radius = size.width * 0.55f,
-                    center = Offset(size.width * 0.85f, size.height * 0.1f)
-                )
-                drawCircle(
-                    color = YouTubeRed.copy(0.08f),
-                    radius = size.width * 0.45f,
-                    center = Offset(size.width * 0.1f, size.height * 0.8f)
-                )
+                if (isDark) {
+                    drawRect(brush = Brush.verticalGradient(listOf(Color(0xFF0D0D1A), Color(0xFF12122A), Color(0xFF0A0A14))))
+                    drawCircle(color = AccentPurple.copy(0.15f), radius = size.width * 0.55f, center = Offset(size.width * 0.85f, size.height * 0.1f))
+                    drawCircle(color = YouTubeRed.copy(0.08f), radius = size.width * 0.45f, center = Offset(size.width * 0.1f, size.height * 0.8f))
+                } else {
+                    drawRect(brush = Brush.linearGradient(
+                        colors = listOf(Color(0xFFF5F0E8), Color(0xFFF2EDE5), Color(0xFFEDE8F5)),
+                        start  = Offset(0f, 0f),
+                        end    = Offset(size.width, size.height),
+                    ))
+                }
             }
 
             LazyColumn(
@@ -146,7 +145,7 @@ fun FolderDetailScreen(
                                 Icon(
                                     imageVector = Icons.Rounded.Refresh,
                                     contentDescription = stringResource(R.string.refresh),
-                                    tint = Color.White,
+                                    tint = if (isDark) Color.White else MaterialTheme.colorScheme.onBackground,
                                 )
                             }
                         }
@@ -158,45 +157,27 @@ fun FolderDetailScreen(
                     TabRow(
                         selectedTabIndex = currentTab,
                         containerColor = Color.Transparent,
-                        contentColor = AccentPurple,
-                        divider = { HorizontalDivider(color = Color.White.copy(alpha = 0.1f)) }
+                        contentColor = if (isDark) AccentPurple else MaterialTheme.colorScheme.secondary,
+                        divider = { HorizontalDivider(color = if (isDark) Color.White.copy(alpha = 0.1f) else MaterialTheme.colorScheme.onBackground.copy(0.1f)) }
                     ) {
-                        Tab(
-                            selected = currentTab == 0,
-                            onClick = { currentTab = 0 },
-                            text = { Text("${stringResource(R.string.channels)} (${channels.size})", color = if (currentTab == 0) AccentPurple else Color.White.copy(0.6f)) }
-                        )
-                        Tab(
-                            selected = currentTab == 1,
-                            onClick = { currentTab = 1 },
-                            text = { Text("${stringResource(R.string.playlists)} (${playlists.size})", color = if (currentTab == 1) AccentPurple else Color.White.copy(0.6f)) }
-                        )
+                        Tab(selected = currentTab == 0, onClick = { currentTab = 0 },
+                            text = { Text("${stringResource(R.string.channels)} (${channels.size})",
+                                color = if (currentTab == 0) (if (isDark) AccentPurple else MaterialTheme.colorScheme.secondary)
+                                        else (if (isDark) Color.White.copy(0.6f) else MaterialTheme.colorScheme.onBackground.copy(0.5f))) })
+                        Tab(selected = currentTab == 1, onClick = { currentTab = 1 },
+                            text = { Text("${stringResource(R.string.playlists)} (${playlists.size})",
+                                color = if (currentTab == 1) (if (isDark) AccentPurple else MaterialTheme.colorScheme.secondary)
+                                        else (if (isDark) Color.White.copy(0.6f) else MaterialTheme.colorScheme.onBackground.copy(0.5f))) })
+                        Tab(selected = currentTab == 2, onClick = { currentTab = 2 },
+                            text = { Text(stringResource(R.string.latest_videos), maxLines = 1,
+                                color = if (currentTab == 2) (if (isDark) AccentPurple else MaterialTheme.colorScheme.secondary)
+                                        else (if (isDark) Color.White.copy(0.6f) else MaterialTheme.colorScheme.onBackground.copy(0.5f))) })
                     }
                     Spacer(Modifier.height(8.dp))
                 }
 
                 if (currentTab == 0) {
-                    // ── محتوى تبويب القنوات ──
-                    if (videos.isNotEmpty()) {
-                        item(key = "header_videos") {
-                            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                                Text(
-                                    text  = stringResource(R.string.latest_videos),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = Color.White,
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                videos.take(5).forEach { video ->
-                                    VideoCard(
-                                        video   = video,
-                                        onClick = { showVideoPlayer = video },
-                                        modifier = Modifier.padding(bottom = 8.dp),
-                                    )
-                                }
-                            }
-                        }
-                    }
-
+                    // ── محتوى تبويب القنوات (بدون فيديوهات) ──
                     item(key = "header_channels") {
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -206,12 +187,12 @@ fun FolderDetailScreen(
                             Text(
                                 text  = stringResource(R.string.channels),
                                 style = MaterialTheme.typography.titleMedium,
-                                color = Color.White,
+                                color = if (isDark) Color.White else MaterialTheme.colorScheme.onBackground,
                             )
                             Text(
                                 text  = stringResource(R.string.long_press_to_reorder),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.5f),
+                                color = if (isDark) Color.White.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onBackground.copy(0.5f),
                             )
                         }
                     }
@@ -263,14 +244,14 @@ fun FolderDetailScreen(
                             }
                         }
                     }
-                } else {
+                } else if (currentTab == 1) {
                     // ── محتوى تبويب القوائم ──
                     if (playlists.isNotEmpty()) {
                         item(key = "header_playlists") {
                             Text(
                                 text     = stringResource(R.string.playlists),
                                 style    = MaterialTheme.typography.titleMedium,
-                                color    = Color.White,
+                                color    = if (isDark) Color.White else MaterialTheme.colorScheme.onBackground,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             )
                         }
@@ -314,9 +295,52 @@ fun FolderDetailScreen(
                             }
                         }
                     }
+                } else {
+                    // ── محتوى تبويب آخر الفيديوهات ──
+                    if (isLoading) {
+                        item(key = "videos_loading") {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(48.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator(color = AccentPurple)
+                            }
+                        }
+                    } else if (videos.isEmpty()) {
+                        item(key = "videos_empty") {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(48.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                Text("🎬", style = MaterialTheme.typography.displayMedium)
+                                Text(
+                                    text  = stringResource(R.string.no_videos_yet),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (isDark) Color.White.copy(0.5f) else MaterialTheme.colorScheme.onBackground.copy(0.5f),
+                                )
+                                OutlinedButton(
+                                    onClick = { viewModel.refreshVideos() },
+                                    border  = androidx.compose.foundation.BorderStroke(1.dp, AccentPurple.copy(0.5f))
+                                ) {
+                                    Icon(Icons.Rounded.Refresh, null, tint = AccentPurple)
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(stringResource(R.string.refresh), color = AccentPurple)
+                                }
+                            }
+                        }
+                    } else {
+                        items(videos, key = { "vid_${it.id}" }) { video ->
+                            VideoCard(
+                                video    = video,
+                                onClick  = { showVideoPlayer = video },
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            )
+                        }
+                    }
                 }
 
-                if (isLoading) {
+                if (isLoading && currentTab != 2) {
                     item(key = "loading_indicator") {
                         Box(
                             modifier = Modifier.fillMaxWidth().padding(24.dp),
@@ -341,17 +365,22 @@ fun FolderDetailScreen(
             )
         }
 
+        // فتح يوتيوب مباشرة عند الضغط على الفيديو
         showVideoPlayer?.let { video ->
-            VideoOptionsDialog(
-                video     = video,
-                onDismiss = { showVideoPlayer = null },
-                onOpenInApp = { showVideoPlayer = null },
-                onOpenInYouTube = {
+            LaunchedEffect(video.id) {
+                try {
+                    // حاول فتح تطبيق يوتيوب أولاً
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("vnd.youtube:${video.id}")).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    context.startActivity(intent)
+                } catch (e: Exception) {
+                    // لو مش مثبّت، افتح في المتصفح
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=${video.id}"))
                     context.startActivity(intent)
-                    showVideoPlayer = null
                 }
-            )
+                showVideoPlayer = null
+            }
         }
 
         // ── نوافذ التأكيد على الحذف ──
@@ -411,8 +440,8 @@ fun AddItemsDialog(
     var selectedChannelIds by remember { mutableStateOf(setOf<String>()) }
     var selectedPlaylistIds by remember { mutableStateOf(setOf<String>()) }
     var tabIndex by remember { mutableIntStateOf(0) }
-
     var searchQuery by remember { mutableStateOf("") }
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
 
     LaunchedEffect(tabIndex) {
         searchQuery = ""
@@ -420,11 +449,11 @@ fun AddItemsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF1A1A2E),
+        containerColor = if (isDark) Color(0xFF1A1A2E) else Color(0xFFFAF6EF),
         title = {
             Text(
                 text = stringResource(R.string.add_to_folder),
-                color = Color.White,
+                color = if (isDark) Color.White else Color(0xFF2E2820),
                 fontWeight = FontWeight.Bold
             )
         },
@@ -433,19 +462,17 @@ fun AddItemsDialog(
                 TabRow(
                     selectedTabIndex = tabIndex,
                     containerColor = Color.Transparent,
-                    contentColor = AccentPurple,
+                    contentColor = if (isDark) AccentPurple else Color(0xFF7B5EA7),
                     divider = {}
                 ) {
-                    Tab(
-                        selected = tabIndex == 0,
-                        onClick = { tabIndex = 0 },
-                        text = { Text(stringResource(R.string.channels)) }
-                    )
-                    Tab(
-                        selected = tabIndex == 1,
-                        onClick = { tabIndex = 1 },
-                        text = { Text(stringResource(R.string.playlists)) }
-                    )
+                    Tab(selected = tabIndex == 0, onClick = { tabIndex = 0 },
+                        text = { Text(stringResource(R.string.channels),
+                            color = if (tabIndex == 0) (if (isDark) AccentPurple else Color(0xFF7B5EA7))
+                                    else (if (isDark) Color.White.copy(0.6f) else Color(0xFF2E2820).copy(0.5f))) })
+                    Tab(selected = tabIndex == 1, onClick = { tabIndex = 1 },
+                        text = { Text(stringResource(R.string.playlists),
+                            color = if (tabIndex == 1) (if (isDark) AccentPurple else Color(0xFF7B5EA7))
+                                    else (if (isDark) Color.White.copy(0.6f) else Color(0xFF2E2820).copy(0.5f))) })
                 }
 
                 Spacer(Modifier.height(8.dp))
@@ -453,20 +480,22 @@ fun AddItemsDialog(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text(stringResource(R.string.search_hint), color = Color.White.copy(0.4f)) },
-                    leadingIcon = { Icon(Icons.Rounded.Search, null, tint = Color.White.copy(0.5f)) },
+                    placeholder = { Text(stringResource(R.string.search_hint), color = if (isDark) Color.White.copy(0.4f) else Color(0xFF2E2820).copy(0.4f)) },
+                    leadingIcon = { Icon(Icons.Rounded.Search, null, tint = if (isDark) Color.White.copy(0.5f) else Color(0xFF2E2820).copy(0.5f)) },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
                             IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Rounded.Clear, null, tint = Color.White.copy(0.5f))
+                                Icon(Icons.Rounded.Clear, null, tint = if (isDark) Color.White.copy(0.5f) else Color(0xFF2E2820).copy(0.5f))
                             }
                         }
                     },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = AccentPurple, unfocusedBorderColor = Color.White.copy(0.1f),
-                        focusedTextColor = Color.White, unfocusedTextColor = Color.White
+                        focusedBorderColor   = if (isDark) AccentPurple else Color(0xFF7B5EA7),
+                        unfocusedBorderColor = if (isDark) Color.White.copy(0.1f) else Color(0xFF2E2820).copy(0.15f),
+                        focusedTextColor     = if (isDark) Color.White else Color(0xFF2E2820),
+                        unfocusedTextColor   = if (isDark) Color.White else Color(0xFF2E2820),
                     )
                 )
 
@@ -478,13 +507,13 @@ fun AddItemsDialog(
                             val filteredChannels = if (searchQuery.isBlank()) availableChannels else availableChannels.filter { it.title.contains(searchQuery, ignoreCase = true) }
 
                             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                Text("${selectedChannelIds.size}/${availableChannels.size} ${stringResource(R.string.selected_label)}", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(0.5f))
+                                Text("${selectedChannelIds.size}/${availableChannels.size} ${stringResource(R.string.selected_label)}", style = MaterialTheme.typography.bodySmall, color = if (isDark) Color.White.copy(0.5f) else Color(0xFF2E2820).copy(0.5f))
                                 val filteredIds = filteredChannels.map { it.id }.toSet()
                                 val allFilteredSelected = filteredIds.isNotEmpty() && selectedChannelIds.containsAll(filteredIds)
 
                                 TextButton(onClick = {
                                     selectedChannelIds = if (allFilteredSelected) selectedChannelIds - filteredIds else selectedChannelIds + filteredIds
-                                }) { Text(if (allFilteredSelected) stringResource(R.string.deselect_all) else stringResource(R.string.select_all), color = AccentPurple, fontSize = 12.sp) }
+                                }) { Text(if (allFilteredSelected) stringResource(R.string.deselect_all) else stringResource(R.string.select_all), color = if (isDark) AccentPurple else Color(0xFF7B5EA7), fontSize = 12.sp) }
                             }
                         }
 
@@ -494,7 +523,7 @@ fun AddItemsDialog(
                             val isSelected = selectedChannelIds.contains(channel.id)
                             ListItem(
                                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                headlineContent = { Text(channel.title, color = Color.White) },
+                                headlineContent = { Text(channel.title, color = if (isDark) Color.White else Color(0xFF2E2820)) },
                                 leadingContent = {
                                     AsyncImage(
                                         model = channel.thumbnailUrl,
@@ -512,7 +541,7 @@ fun AddItemsDialog(
                                                 selectedChannelIds - channel.id
                                             }
                                         },
-                                        colors = CheckboxDefaults.colors(checkedColor = AccentPurple)
+                                        colors = CheckboxDefaults.colors(checkedColor = if (isDark) AccentPurple else Color(0xFF7B5EA7))
                                     )
                                 },
                                 modifier = Modifier.clickable {
@@ -529,13 +558,13 @@ fun AddItemsDialog(
                             val filteredPlaylists = if (searchQuery.isBlank()) availablePlaylists else availablePlaylists.filter { it.title.contains(searchQuery, ignoreCase = true) }
 
                             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                Text("${selectedPlaylistIds.size}/${availablePlaylists.size} ${stringResource(R.string.selected_label)}", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(0.5f))
+                                Text("${selectedPlaylistIds.size}/${availablePlaylists.size} ${stringResource(R.string.selected_label)}", style = MaterialTheme.typography.bodySmall, color = if (isDark) Color.White.copy(0.5f) else Color(0xFF2E2820).copy(0.5f))
                                 val filteredIds = filteredPlaylists.map { it.id }.toSet()
                                 val allFilteredSelected = filteredIds.isNotEmpty() && selectedPlaylistIds.containsAll(filteredIds)
 
                                 TextButton(onClick = {
                                     selectedPlaylistIds = if (allFilteredSelected) selectedPlaylistIds - filteredIds else selectedPlaylistIds + filteredIds
-                                }) { Text(if (allFilteredSelected) stringResource(R.string.deselect_all) else stringResource(R.string.select_all), color = AccentPurple, fontSize = 12.sp) }
+                                }) { Text(if (allFilteredSelected) stringResource(R.string.deselect_all) else stringResource(R.string.select_all), color = if (isDark) AccentPurple else Color(0xFF7B5EA7), fontSize = 12.sp) }
                             }
                         }
 
@@ -545,7 +574,7 @@ fun AddItemsDialog(
                             val isSelected = selectedPlaylistIds.contains(playlist.id)
                             ListItem(
                                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                headlineContent = { Text(playlist.title, color = Color.White) },
+                                headlineContent = { Text(playlist.title, color = if (isDark) Color.White else Color(0xFF2E2820)) },
                                 leadingContent = {
                                     AsyncImage(
                                         model = playlist.thumbnailUrl,
@@ -563,7 +592,7 @@ fun AddItemsDialog(
                                                 selectedPlaylistIds - playlist.id
                                             }
                                         },
-                                        colors = CheckboxDefaults.colors(checkedColor = AccentPurple)
+                                        colors = CheckboxDefaults.colors(checkedColor = if (isDark) AccentPurple else Color(0xFF7B5EA7))
                                     )
                                 },
                                 modifier = Modifier.clickable {
@@ -584,12 +613,12 @@ fun AddItemsDialog(
                 onClick = { onConfirm(selectedChannelIds.toList(), selectedPlaylistIds.toList()) },
                 enabled = selectedChannelIds.isNotEmpty() || selectedPlaylistIds.isNotEmpty()
             ) {
-                Text(stringResource(R.string.add_to_folder), color = AccentPurple)
+                Text(stringResource(R.string.add_to_folder), color = if (isDark) AccentPurple else Color(0xFF7B5EA7))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.cancel), color = Color.White.copy(alpha = 0.6f))
+                Text(stringResource(R.string.cancel), color = if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF2E2820).copy(0.5f))
             }
         }
     )
@@ -602,13 +631,14 @@ fun VideoOptionsDialog(
     onOpenInApp: () -> Unit,
     onOpenInYouTube: () -> Unit,
 ) {
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF1A1A2E),
+        containerColor = if (isDark) Color(0xFF1A1A2E) else Color(0xFFFAF6EF),
         title = {
             Text(
                 stringResource(R.string.how_to_watch_video),
-                color = Color.White,
+                color = if (isDark) Color.White else Color(0xFF2E2820),
                 fontWeight = FontWeight.Bold
             )
         },
@@ -619,7 +649,7 @@ fun VideoOptionsDialog(
                 Button(
                     onClick = onOpenInApp,
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = AccentPurple)
+                    colors = ButtonDefaults.buttonColors(containerColor = if (isDark) AccentPurple else Color(0xFF7B5EA7))
                 ) {
                     Icon(Icons.Rounded.PlayArrow, null)
                     Spacer(Modifier.width(8.dp))
@@ -629,11 +659,11 @@ fun VideoOptionsDialog(
                 OutlinedButton(
                     onClick = onOpenInYouTube,
                     modifier = Modifier.fillMaxWidth(),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+                    border = BorderStroke(1.dp, if (isDark) Color.White.copy(alpha = 0.2f) else Color(0xFF2E2820).copy(0.2f))
                 ) {
-                    Icon(Icons.AutoMirrored.Rounded.OpenInNew, null, tint = Color.White)
+                    Icon(Icons.AutoMirrored.Rounded.OpenInNew, null, tint = if (isDark) Color.White else Color(0xFF2E2820))
                     Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.open_in_youtube), color = Color.White)
+                    Text(stringResource(R.string.open_in_youtube), color = if (isDark) Color.White else Color(0xFF2E2820))
                 }
             }
         },

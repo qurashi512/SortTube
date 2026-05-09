@@ -103,4 +103,26 @@
     <string name="items_already_exist_warning">Some selected items are already in other folders (%1$s).\nDo you want to move them here?</string>
     <string name="confirm_move_title">Confirm Move</string>
     <string name="move_action">Move</string>
+    <string name="no_videos_yet">No videos yet, try refreshing</string>
+    <string name="onboarding_title_1">Organize in Folders</string>
+    <string name="onboarding_desc_1">Tap ＋ to create a new folder,\nand select channels and playlists to add.</string>
+
+    <string name="onboarding_title_2">Import from YouTube</string>
+    <string name="onboarding_desc_2">Tap the sync icon ↻\nto import your subscriptions automatically.</string>
+
+    <string name="onboarding_title_3">Drag to Reorder</string>
+    <string name="onboarding_desc_3">Long press on any folder or channel\nand drag to change its order.</string>
+
+    <string name="onboarding_title_4">Swipe Left to Delete</string>
+    <string name="onboarding_desc_4">Swipe any folder or channel to the left\nto reveal the delete option.</string>
+
+    <string name="onboarding_title_5">Watch Latest Videos</string>
+    <string name="onboarding_desc_5">Open any folder and go to the\n\"Latest Videos\" tab to watch new content.</string>
+
+    <string name="onboarding_title_6">All Set!</string>
+    <string name="onboarding_desc_6">Start now and enjoy organizing\nyour YouTube content like a pro.</string>
+
+    <string name="next_btn">Next ←</string>
+    <string name="start_btn">Start Now 🚀</string>
+    <string name="skip_btn">Skip</string>
 </resources>

@@ -54,7 +54,33 @@ class YouTubeRepository @Inject constructor(
 
     suspend fun createFolder(folder: Folder): Long = folderDao.insertFolder(folder.copy(accountId = currentAccountId()))
     suspend fun updateFolder(folder: Folder) = folderDao.updateFolder(folder.copy(updatedAt = System.currentTimeMillis()))
-    suspend fun deleteFolder(folder: Folder) = folderDao.deleteFolder(folder)
+
+    // ✅ الحذف الآمن: ننقل القنوات والبلايلست للمجلد الافتراضي أولاً ثم نحذف المجلد
+    suspend fun deleteFolder(folder: Folder) {
+        val accountId     = currentAccountId()
+        val defaultFolder = folderDao.getFoldersForAccount(accountId)
+            .let { flow ->
+                var result: Folder? = null
+                flow.take(1).collect { list -> result = list.minByOrNull { it.id } }
+                result
+            }
+        val defaultFolderId = defaultFolder?.id ?: return // لا تحذف لو ما لقينا المجلد الافتراضي
+
+        // نقل القنوات والبلايلست للمجلد الافتراضي قبل الحذف
+        channelDao.moveChannelsToFolder(
+            deletedFolderId = folder.id,
+            defaultFolderId = defaultFolderId,
+            accountId       = accountId
+        )
+        playlistDao.movePlaylistsToFolder(
+            deletedFolderId = folder.id,
+            defaultFolderId = defaultFolderId,
+            accountId       = accountId
+        )
+
+        // الآن نحذف المجلد بأمان
+        folderDao.deleteFolder(folder)
+    }
     suspend fun reorderFolders(folders: List<Folder>) = folderDao.updatePositions(folders)
 
     fun getFolderCountForAccountFlow(): Flow<Int> = folderDao.getFolderCountForAccountFlow(currentAccountId())
@@ -153,7 +179,7 @@ class YouTubeRepository @Inject constructor(
             )
             Result.Success(resp.items.map {
                 Video(
-                    id           = it.id,
+                    id           = it.snippet.resourceId.videoId,
                     title        = it.snippet.title,
                     description  = it.snippet.description,
                     thumbnailUrl = it.snippet.thumbnails.getBestUrl(),

@@ -14,11 +14,16 @@ object LocaleHelper {
     enum class AppLanguage(val code: String, val displayName: String) {
         ARABIC("ar", "العربية"),
         ENGLISH("en", "English"),
+        SYSTEM("system", "System"),   // ✅ تلقائي مع لغة الجهاز
     }
 
-    // ✓ قبول String مباشرة
+    /**
+     * يُطبّق اللغة المطلوبة على الـ Context.
+     * إذا كان الكود "system" → يستخدم لغة الجهاز الأصلية.
+     */
     fun setLocale(context: Context, languageCode: String): Context {
-        val locale = Locale(languageCode)
+        val resolvedCode = if (languageCode == "system") getSystemLanguageCode() else languageCode
+        val locale = Locale(resolvedCode)
         Locale.setDefault(locale)
         val config = Configuration(context.resources.configuration)
         config.setLocale(locale)
@@ -30,10 +35,16 @@ object LocaleHelper {
     fun setLocale(context: Context, language: AppLanguage): Context =
         setLocale(context, language.code)
 
+    /**
+     * يعيد لغة الجهاز الافتراضية (قبل أي تغيير من التطبيق).
+     * مفيد لعرض معاينة اللغة التلقائية في الإعدادات.
+     */
+    fun getSystemLanguageCode(): String = Locale.getDefault().language
+
     fun getCurrentLanguage(context: Context): AppLanguage {
         val langCode = context.resources.configuration.locales[0].language
         return AppLanguage.values().firstOrNull { it.code == langCode }
-            ?: AppLanguage.ARABIC
+            ?: AppLanguage.SYSTEM
     }
 
     fun isRtl(context: Context): Boolean =

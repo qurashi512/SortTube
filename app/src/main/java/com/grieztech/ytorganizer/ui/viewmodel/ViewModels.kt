@@ -36,6 +36,9 @@ class HomeViewModel @Inject constructor(
     private val _folders       = MutableStateFlow<List<Folder>>(emptyList())
     val folders: StateFlow<List<Folder>> = _folders.asStateFlow()
 
+    private val _defaultFolderId = MutableStateFlow<Long?>(null)
+    val defaultFolderId: StateFlow<Long?> = _defaultFolderId.asStateFlow()
+
     private val _channelCounts = MutableStateFlow<Map<Long, Int>>(emptyMap())
     val channelCounts: StateFlow<Map<Long, Int>> = _channelCounts.asStateFlow()
 
@@ -102,6 +105,7 @@ class HomeViewModel @Inject constructor(
             repository.getAllFolders().collect { list ->
                 _localFolders = list.toMutableList()
                 _folders.value = list
+                _defaultFolderId.value = getDefaultFolderId(list)
                 refreshChannelCounts(list)
             }
         }
@@ -226,12 +230,19 @@ class HomeViewModel @Inject constructor(
     // ── Folders CRUD ──────────────────────────────────────────────────────
 
     fun checkItemsBeforeCreatingFolder(
+        name       : String,           // ✅ مطلوب للتحقق من الاسم أولاً
         channelIds : List<String>,
         playlistIds: List<String>,
         onWarningNeeded: (String) -> Unit,
         onProceed      : () -> Unit
     ) {
         viewModelScope.launch {
+            // ✅ فحص الاسم أولاً — إذا مكرر نوقف هنا قبل أي شيء آخر
+            if (isNameTaken(name)) {
+                _folderCreateError.value = context.getString(R.string.folder_exists_error)
+                return@launch
+            }
+
             val defaultId = getDefaultFolderId(_localFolders)
             val allCh = repository.getAllChannels().first()
             val allPl = repository.getAllPlaylists().first()
@@ -244,7 +255,9 @@ class HomeViewModel @Inject constructor(
                 val folderNames = _localFolders.filter { it.id in folderIds }.map {
                     if (it.name.equals("All Channels", ignoreCase = true)) context.getString(R.string.all_folder) else it.name
                 }.joinToString("، ")
-                onWarningNeeded(context.getString(R.string.items_already_exist_warning, folderNames))
+                // ✅ رسالة بالعربية
+                val msg = "بعض العناصر المختارة موجودة بالفعل في: $folderNames\nهل تريد نقلها إلى هنا؟"
+                onWarningNeeded(msg)
             } else {
                 onProceed()
             }
@@ -297,7 +310,7 @@ class HomeViewModel @Inject constructor(
     private suspend fun getOrCreateDefaultFolder(): Long {
         val defaultId = getDefaultFolderId(_localFolders)
         if (defaultId != null) return defaultId
-        return repository.createFolder(Folder(name="All Channels", emoji="⭐", color="#FF4444", position=0))
+        return repository.createFolder(Folder(name="All Channels", emoji="📺", color="#FF4444", position=0))
     }
 
     // ── Account ───────────────────────────────────────────────────────────

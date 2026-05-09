@@ -105,4 +105,26 @@
     <string name="items_already_exist_warning">بعض العناصر المحددة موجودة بالفعل في مجلدات أخرى (%1$s).\nهل تريد نقلها إلى هذا المجلد؟</string>
     <string name="confirm_move_title">تأكيد النقل</string>
     <string name="move_action">نقل</string>
+    <string name="no_videos_yet">لا توجد فيديوهات بعد، جرب التحديث</string>
+    <string name="onboarding_title_1">نظّم قنواتك في مجلدات</string>
+    <string name="onboarding_desc_1">اضغط على ＋ لإنشاء مجلد جديد،\nواختار القنوات والقوائم اللي تحب تضيفها فيه.</string>
+
+    <string name="onboarding_title_2">استورد من يوتيوب</string>
+    <string name="onboarding_desc_2">اضغط على أيقونة المزامنة ↻\nلاستيراد اشتراكاتك وقوائمك من يوتيوب تلقائياً.</string>
+
+    <string name="onboarding_title_3">اسحب لإعادة الترتيب</string>
+    <string name="onboarding_desc_3">اضغط طويلاً على أي مجلد أو قناة\nواسحبه لتغيير ترتيبه.</string>
+
+    <string name="onboarding_title_4">اسحب لليسار للحذف</string>
+    <string name="onboarding_desc_4">مرّر أي مجلد أو قناة لليسار\nلتظهر لك خيار الحذف.</string>
+
+    <string name="onboarding_title_5">شاهد آخر الفيديوهات</string>
+    <string name="onboarding_desc_5">افتح أي مجلد وانتقل لتبويب\n\"آخر الفيديوهات\" لمشاهدة أحدث المحتوى.</string>
+
+    <string name="onboarding_title_6">كل شيء جاهز!</string>
+    <string name="onboarding_desc_6">ابدأ الآن واستمتع بتنظيم\nمحتوى يوتيوب بشكل احترافي.</string>
+
+    <string name="next_btn">التالي ←</string>
+    <string name="start_btn">ابدأ الآن 🚀</string>
+    <string name="skip_btn">تخطي</string>
 </resources>

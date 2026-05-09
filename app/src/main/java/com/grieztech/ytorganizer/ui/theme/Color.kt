@@ -28,9 +28,9 @@ val DarkGlassPanel   = Color(0x25FFFFFF)
 val DarkGlassBorder  = Color(0x50FFFFFF)
 
 // ── Light Mode ── ألوان فاتحة بتباين عالٍ
-val LightBackground  = Color(0xFFECEEFF)
-val LightSurface     = Color(0xFFFFFFFF)
-val LightSurfaceVar  = Color(0xFFE4E6FF)
+val LightBackground  = Color(0xFFF5F0E8)   // بيج كريمي دافي
+val LightSurface     = Color(0xFFFAF7F2)   // كريم فاتح للكروت
+val LightSurfaceVar  = Color(0xFFEDE8DF)   // بيج أغمق قليلاً
 val LightPrimary     = Color(0xFFDD0000)
 val LightOnPrimary   = Color(0xFFFFFFFF)
 val LightSecondary   = Color(0xFF5B3FDF)
@@ -44,9 +44,9 @@ val GradientStart    = Color(0xFF12124A)
 val GradientMid      = Color(0xFF080820)
 val GradientEnd      = Color(0xFF3A1A8A)
 
-val LightGradientStart = Color(0xFFDCE0FF)
-val LightGradientMid   = Color(0xFFF0ECFF)
-val LightGradientEnd   = Color(0xFFD4DCFF)
+val LightGradientStart = Color(0xFFF8F4EE)   // كريم فاتح جداً
+val LightGradientMid   = Color(0xFFF2EDE5)   // بيج ناعم
+val LightGradientEnd   = Color(0xFFEDE8F5)   // لافندر فاتح جداً
 
 // ── Accent Colors ── زاهية وواضحة
 val AccentBlue       = Color(0xFF3377FF)

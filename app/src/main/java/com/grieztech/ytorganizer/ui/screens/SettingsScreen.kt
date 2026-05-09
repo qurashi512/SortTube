@@ -144,12 +144,20 @@ fun SettingsScreen(
                                     label = "🇬🇧  " + stringResource(R.string.english), selected = currentLang == "en",
                                     selectedColor = AccentBlue, modifier = Modifier.weight(1f)
                                 ) { onLanguageChange("en") }
+                                BigThemeChip(
+                                    label = "⚙️  " + stringResource(R.string.system_mode), selected = currentLang == "system",
+                                    selectedColor = AccentPurple, modifier = Modifier.weight(1f)
+                                ) { onLanguageChange("system") }
                             }
                             Spacer(Modifier.height(8.dp))
                             Text(
-                                text  = "⚠️  " + stringResource(R.string.language_change_warning),
+                                text = when (currentLang) {
+                                    "ar"     -> "⚠️  " + stringResource(R.string.language_change_warning)
+                                    "en"     -> "⚠️  " + stringResource(R.string.language_change_warning)
+                                    else     -> "⚙️  " + stringResource(R.string.system_mode_active)
+                                },
                                 style = MaterialTheme.typography.bodySmall,
-                                color = warningTextColor,
+                                color = if (currentLang == "system") onBackgroundColor.copy(0.65f) else warningTextColor,
                             )
                         }
                     }

@@ -23,7 +23,7 @@ data class SubscriptionSnippet(
     val resourceId : ResourceId,
     val thumbnails : Thumbnails = Thumbnails(),
 )
-data class ResourceId(val kind: String = "", val channelId: String = "")
+data class ResourceId(val kind: String = "", val channelId: String = "", val videoId: String = "")
 
 data class YouTubeChannelsResponse(val items: List<ChannelItem> = emptyList())
 data class ChannelItem(
@@ -80,6 +80,7 @@ data class VideoSnippet(
     val channelTitle: String    = "",
     val channelId  : String     = "",
     val publishedAt: String     = "",
+    val resourceId : ResourceId = ResourceId(),
 )
 data class VideoContentDetails(val duration: String = "")
 data class VideoStatistics(val viewCount: String = "0", val likeCount: String = "0")

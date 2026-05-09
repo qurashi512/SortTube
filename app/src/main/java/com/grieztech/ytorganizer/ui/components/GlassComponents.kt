@@ -49,19 +49,30 @@ fun GlassCard(
 
     val glassBrush = Brush.linearGradient(
         colors = listOf(
-            Color.White.copy(alpha = if (isDark) 0.12f else 0.70f),
-            Color.White.copy(alpha = if (isDark) 0.06f else 0.40f),
+            Color.White.copy(alpha = if (isDark) 0.12f else 0.55f),
+            Color.White.copy(alpha = if (isDark) 0.06f else 0.30f),
         ),
         start = Offset(0f, 0f),
         end   = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY),
     )
 
-    val borderBrush = Brush.linearGradient(
-        colors = listOf(
-            Color.White.copy(alpha = if (isDark) 0.40f else 0.80f),
-            Color.White.copy(alpha = if (isDark) 0.10f else 0.30f),
-        ),
-    )
+    val borderBrush = if (isDark) {
+        Brush.linearGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.40f),
+                Color.White.copy(alpha = 0.10f),
+            ),
+        )
+    } else {
+        // ✅ الوضع الفاتح: border بلون بيج/رمادي دافي يظهر على كل الجوانب
+        Brush.linearGradient(
+            colors = listOf(
+                Color(0xFFB8A99A).copy(alpha = 0.50f),
+                Color(0xFFB8A99A).copy(alpha = 0.30f),
+                Color(0xFFB8A99A).copy(alpha = 0.50f),
+            ),
+        )
+    }
 
     val baseModifier = modifier
         .clip(RoundedCornerShape(cornerRadius))
@@ -224,18 +235,47 @@ fun GlassTopBar(
 
 @Composable
 fun FloatingBottomBar(onHomeClick: () -> Unit, onProfileClick: () -> Unit, onSettingsClick: () -> Unit, isSettingsActive: Boolean) {
-    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp).navigationBarsPadding(), contentAlignment = Alignment.Center) {
-        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant, shadowElevation = 8.dp) {
-            Row(modifier = Modifier.padding(horizontal = 32.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(48.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onHomeClick, modifier = Modifier.size(40.dp)) {
-                    Icon(Icons.Rounded.Home, null, tint = if(!isSettingsActive) AccentPurple else MaterialTheme.colorScheme.onSurfaceVariant.copy(0.6f), modifier = Modifier.size(28.dp))
-                }
-                IconButton(onClick = onProfileClick, modifier = Modifier.size(40.dp)) {
-                    Icon(Icons.Rounded.AccountCircle, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.6f), modifier = Modifier.size(26.dp))
-                }
-                IconButton(onClick = onSettingsClick, modifier = Modifier.size(40.dp)) {
-                    Icon(Icons.Rounded.Settings, null, tint = if(isSettingsActive) AccentPurple else MaterialTheme.colorScheme.onSurfaceVariant.copy(0.6f), modifier = Modifier.size(26.dp))
-                }
+    val isDark      = !MaterialTheme.colorScheme.background.luminance().let { it > 0.5f }
+    val barColor    = if (isDark) Color(0xFF2A2A2A) else Color(0xFFFFFFFF)
+    val activeColor = if (isDark) Color(0xFF484848) else Color(0xFFE8E8E8)
+    val iconActive  = if (isDark) Color.White       else Color(0xFF1A1A1A)
+    val iconInactive= if (isDark) Color.White.copy(0.55f) else Color(0xFF1A1A1A).copy(0.45f)
+
+    Box(
+        modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(bottom = 16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = barColor,
+            shadowElevation = if (isDark) 12.dp else 8.dp,
+            tonalElevation = 0.dp,
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // الرئيسية
+                Box(
+                    modifier = Modifier.height(52.dp).width(64.dp).clip(CircleShape)
+                        .background(if (!isSettingsActive) activeColor else Color.Transparent)
+                        .clickable(onClick = onHomeClick),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Rounded.Home, null, tint = if (!isSettingsActive) iconActive else iconInactive, modifier = Modifier.size(26.dp)) }
+                // الحساب
+                Box(
+                    modifier = Modifier.height(52.dp).width(64.dp).clip(CircleShape)
+                        .clickable(onClick = onProfileClick),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Rounded.AccountCircle, null, tint = iconInactive, modifier = Modifier.size(26.dp)) }
+                // الإعدادات
+                Box(
+                    modifier = Modifier.height(52.dp).width(64.dp).clip(CircleShape)
+                        .background(if (isSettingsActive) activeColor else Color.Transparent)
+                        .clickable(onClick = onSettingsClick),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Rounded.Settings, null, tint = if (isSettingsActive) iconActive else iconInactive, modifier = Modifier.size(26.dp)) }
             }
         }
     }

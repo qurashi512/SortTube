@@ -93,6 +93,10 @@ interface ChannelDao {
 
     @Query("UPDATE channels SET accountId = :newAccountId WHERE accountId = ''")
     suspend fun claimOrphanedChannels(newAccountId: String)
+
+    // ✅ نقل كل قنوات مجلد محذوف إلى المجلد الافتراضي (بدلاً من الحذف)
+    @Query("UPDATE channels SET folderId = :defaultFolderId WHERE folderId = :deletedFolderId AND accountId = :accountId")
+    suspend fun moveChannelsToFolder(deletedFolderId: Long, defaultFolderId: Long, accountId: String)
 }
 
 @Dao
@@ -131,11 +135,15 @@ interface PlaylistDao {
 
     @Query("UPDATE playlists SET accountId = :newAccountId WHERE accountId = ''")
     suspend fun claimOrphanedPlaylists(newAccountId: String)
+
+    // ✅ نقل كل بلايلست مجلد محذوف إلى المجلد الافتراضي (بدلاً من الحذف)
+    @Query("UPDATE playlists SET folderId = :defaultFolderId WHERE folderId = :deletedFolderId AND accountId = :accountId")
+    suspend fun movePlaylistsToFolder(deletedFolderId: Long, defaultFolderId: Long, accountId: String)
 }
 
 @Database(
     entities     = [Folder::class, Channel::class, Playlist::class],
-    version      = 2,
+    version      = 4,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
