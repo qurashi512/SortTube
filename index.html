@@ -437,12 +437,18 @@
 
   function toggleLang() {
     current = current === 'en' ? 'ar' : 'en';
+    localStorage.setItem('sortTubeLang', current); // حفظ اللغة في ذاكرة المتصفح
     apply(current);
   }
 
-  // كشف لغة المتصفح تلقائياً
-  const browserLang = navigator.language || navigator.userLanguage;
-  if (browserLang.startsWith('ar')) { current = 'ar'; }
+  // التحقق من اللغة المحفوظة أو لغة الجهاز
+  const savedLang = localStorage.getItem('sortTubeLang');
+  if (savedLang) {
+    current = savedLang;
+  } else {
+    const browserLang = navigator.language || navigator.userLanguage;
+    if (browserLang.startsWith('ar')) { current = 'ar'; }
+  }
   apply(current);
 </script>
 </body>
