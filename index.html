@@ -252,12 +252,10 @@
 </head>
 <body>
 
-<!-- Background orbs -->
 <div class="orb orb1"></div>
 <div class="orb orb2"></div>
 <div class="orb orb3"></div>
 
-<!-- Nav -->
 <nav>
   <a class="nav-logo" href="#">
     <div class="icon">
@@ -265,10 +263,12 @@
     </div>
     <span>SortTube</span>
   </a>
-  <button class="lang-btn" onclick="toggleLang()" id="langBtn">العربية</button>
+  <div style="display: flex; gap: 10px;">
+    <a class="lang-btn" href="PRIVACY_POLICY.html" id="nav-privacy" style="text-decoration: none; display: flex; align-items: center;">Privacy Policy</a>
+    <button class="lang-btn" onclick="toggleLang()" id="langBtn">العربية</button>
+  </div>
 </nav>
 
-<!-- Hero -->
 <section class="hero">
   <div class="hero-badge">
     <span></span>
@@ -295,7 +295,6 @@
 
 <div class="divider"></div>
 
-<!-- Features -->
 <section class="section">
   <div class="section-label">
     <h2 id="feat-title">Everything you need</h2>
@@ -337,7 +336,6 @@
 
 <div class="divider"></div>
 
-<!-- Download -->
 <section class="download-section">
   <div class="download-box">
     <h2 id="dl-title">Ready to sort your YouTube?</h2>
@@ -350,11 +348,11 @@
   </div>
 </section>
 
-<!-- Footer -->
 <footer>
   <p id="footer-text">
-    Crafted with ❤️ by <strong>Gorashe</strong> ·
-    <a href="https://github.com/qurashi512/SortTube" target="_blank">GitHub</a>
+    Crafted with ❤️ by <strong>GriezTech</strong> ·
+    <a href="https://github.com/qurashi512/SortTube" target="_blank">GitHub</a> ·
+    <a href="PRIVACY_POLICY.html">Privacy Policy</a>
   </p>
 </footer>
 
@@ -379,8 +377,9 @@
       dlSub: 'Free. No ads. Open source.',
       dlBtnText: 'Download APK — v1.0.0',
       dlNote: 'Android only · Enable "Install from unknown sources" before installing',
-      footerText: 'Crafted with ❤️ by <strong>Gorashe</strong> · <a href="https://github.com/qurashi512/SortTube" target="_blank">GitHub</a>',
+      footerText: 'Crafted with ❤️ by <strong>GriezTech</strong> · <a href="https://github.com/qurashi512/SortTube" target="_blank">GitHub</a> · <a href="PRIVACY_POLICY.html">Privacy Policy</a>',
       langBtn: 'العربية',
+      navPrivacy: 'Privacy Policy'
     },
     ar: {
       dir: 'rtl', lang: 'ar',
@@ -401,8 +400,9 @@
       dlSub: 'مجاني. بدون إعلانات. مفتوح المصدر.',
       dlBtnText: 'تحميل APK — v1.0.0',
       dlNote: 'Android فقط · فعّل "تثبيت من مصادر غير معروفة" قبل التثبيت',
-      footerText: 'صُنع بـ ❤️ بواسطة <strong>Gorashe</strong> · <a href="https://github.com/qurashi512/SortTube" target="_blank">GitHub</a>',
+      footerText: 'صُنع بـ ❤️ بواسطة <strong>GriezTech</strong> · <a href="https://github.com/qurashi512/SortTube" target="_blank">GitHub</a> · <a href="PRIVACY_POLICY.html">سياسة الخصوصية</a>',
       langBtn: 'English',
+      navPrivacy: 'سياسة الخصوصية'
     }
   };
 
@@ -432,6 +432,7 @@
     document.getElementById('dl-note').textContent    = s.dlNote;
     document.getElementById('footer-text').innerHTML  = s.footerText;
     document.getElementById('langBtn').textContent    = s.langBtn;
+    document.getElementById('nav-privacy').textContent = s.navPrivacy;
   }
 
   function toggleLang() {
@@ -439,9 +440,10 @@
     apply(current);
   }
 
-  // Auto-detect browser language
+  // كشف لغة المتصفح تلقائياً
   const browserLang = navigator.language || navigator.userLanguage;
-  if (browserLang.startsWith('ar')) { current = 'ar'; apply('ar'); }
+  if (browserLang.startsWith('ar')) { current = 'ar'; }
+  apply(current);
 </script>
 </body>
 </html>
