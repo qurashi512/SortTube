@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SortTube — Organize your YouTube</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:        #0d0b1e;
+    --bg2:       #130f2a;
+    --purple:    #5c3bce;
+    --purple2:   #7b5cf5;
+    --red:       #ff2b2b;
+    --red2:      #ff5252;
+    --text:      #f0ecff;
+    --muted:     #8b82b0;
+    --card:      rgba(255,255,255,0.04);
+    --border:    rgba(255,255,255,0.08);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body[dir="rtl"] { font-family: 'Tajawal', sans-serif; }
+
+  /* ── Orbs ── */
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: .35;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .orb1 { width: 600px; height: 600px; background: var(--purple); top: -200px; right: -150px; animation: drift 12s ease-in-out infinite alternate; }
+  .orb2 { width: 500px; height: 500px; background: #1a0a2e; bottom: -150px; left: -100px; animation: drift 15s ease-in-out infinite alternate-reverse; }
+  .orb3 { width: 300px; height: 300px; background: var(--red); bottom: 30%; right: 10%; opacity: .15; animation: drift 10s ease-in-out infinite alternate; }
+
+  @keyframes drift { from { transform: translate(0,0); } to { transform: translate(30px, 40px); } }
+
+  /* ── Nav ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 5%;
+    background: rgba(13,11,30,.7);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .nav-logo .icon {
+    width: 36px; height: 36px; background: var(--red);
+    border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  }
+  .nav-logo .icon svg { width: 18px; fill: white; }
+  .nav-logo span {
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.2rem; color: var(--text);
+  }
+  body[dir="rtl"] .nav-logo span { font-family: 'Tajawal', sans-serif; }
+
+  .lang-btn {
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--text); padding: 8px 18px; border-radius: 30px;
+    cursor: pointer; font-size: .85rem; transition: all .2s;
+    font-family: inherit;
+  }
+  .lang-btn:hover { background: var(--purple); border-color: var(--purple2); }
+
+  /* ── Hero ── */
+  .hero {
+    position: relative; z-index: 1;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center;
+    padding: 120px 5% 80px;
+  }
+
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255,43,43,.12); border: 1px solid rgba(255,43,43,.25);
+    color: var(--red2); padding: 6px 16px; border-radius: 30px;
+    font-size: .8rem; font-weight: 500; margin-bottom: 28px;
+    animation: fadeUp .8s ease both;
+  }
+  .hero-badge span { width: 6px; height: 6px; background: var(--red); border-radius: 50%; display: inline-block; animation: pulse 2s infinite; }
+
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.4)} }
+
+  .hero h1 {
+    font-family: 'Syne', sans-serif; font-weight: 800;
+    font-size: clamp(2.8rem, 7vw, 5.5rem);
+    line-height: 1.05; letter-spacing: -2px;
+    animation: fadeUp .9s .1s ease both;
+  }
+  body[dir="rtl"] .hero h1 { font-family: 'Tajawal', sans-serif; letter-spacing: 0; }
+
+  .hero h1 .accent { color: var(--red); }
+  .hero h1 .accent2 { color: var(--purple2); }
+
+  .hero-sub {
+    max-width: 520px; margin: 20px auto 0;
+    color: var(--muted); font-size: 1.1rem; line-height: 1.7;
+    animation: fadeUp 1s .2s ease both;
+  }
+
+  .hero-cta {
+    margin-top: 40px; display: flex; gap: 14px; flex-wrap: wrap; justify-content: center;
+    animation: fadeUp 1s .35s ease both;
+  }
+
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--red); color: white;
+    padding: 15px 32px; border-radius: 14px;
+    font-weight: 700; font-size: 1rem; text-decoration: none;
+    transition: all .25s; box-shadow: 0 8px 30px rgba(255,43,43,.35);
+  }
+  .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 14px 40px rgba(255,43,43,.45); background: var(--red2); }
+  .btn-primary svg { width: 20px; fill: white; }
+
+  .btn-secondary {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--text); padding: 15px 32px; border-radius: 14px;
+    font-weight: 500; font-size: 1rem; text-decoration: none;
+    transition: all .25s;
+  }
+  .btn-secondary:hover { background: var(--border); transform: translateY(-3px); }
+  .btn-secondary svg { width: 18px; fill: var(--text); }
+
+  @keyframes fadeUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+
+  /* ── Features ── */
+  .section {
+    position: relative; z-index: 1;
+    padding: 80px 5%;
+    max-width: 1100px; margin: 0 auto;
+  }
+
+  .section-label {
+    text-align: center; margin-bottom: 56px;
+  }
+  .section-label h2 {
+    font-family: 'Syne', sans-serif; font-weight: 800;
+    font-size: clamp(1.8rem, 4vw, 2.8rem); letter-spacing: -1px;
+  }
+  body[dir="rtl"] .section-label h2 { font-family: 'Tajawal', sans-serif; letter-spacing: 0; }
+  .section-label p { color: var(--muted); margin-top: 10px; font-size: 1rem; }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+  }
+
+  .feat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+    transition: all .3s;
+    position: relative; overflow: hidden;
+  }
+  .feat-card::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(92,59,206,.1), transparent);
+    opacity: 0; transition: opacity .3s;
+  }
+  .feat-card:hover { border-color: rgba(123,92,245,.35); transform: translateY(-4px); }
+  .feat-card:hover::before { opacity: 1; }
+
+  .feat-icon {
+    width: 48px; height: 48px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem; margin-bottom: 16px;
+  }
+  .feat-card h3 {
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.05rem; margin-bottom: 8px;
+  }
+  body[dir="rtl"] .feat-card h3 { font-family: 'Tajawal', sans-serif; }
+  .feat-card p { color: var(--muted); font-size: .9rem; line-height: 1.6; }
+
+  /* ── Download ── */
+  .download-section {
+    position: relative; z-index: 1;
+    padding: 60px 5% 100px;
+  }
+  .download-box {
+    max-width: 700px; margin: 0 auto;
+    background: linear-gradient(135deg, rgba(92,59,206,.2), rgba(255,43,43,.1));
+    border: 1px solid rgba(123,92,245,.3);
+    border-radius: 28px;
+    padding: 56px 40px;
+    text-align: center;
+    position: relative; overflow: hidden;
+  }
+  .download-box::after {
+    content: '';
+    position: absolute; top: -60px; right: -60px;
+    width: 220px; height: 220px;
+    background: var(--purple); border-radius: 50%;
+    filter: blur(80px); opacity: .25;
+  }
+  .download-box h2 {
+    font-family: 'Syne', sans-serif; font-weight: 800;
+    font-size: clamp(1.6rem, 4vw, 2.4rem); margin-bottom: 12px; letter-spacing: -1px;
+  }
+  body[dir="rtl"] .download-box h2 { font-family: 'Tajawal', sans-serif; letter-spacing: 0; }
+  .download-box p { color: var(--muted); margin-bottom: 32px; font-size: 1rem; }
+
+  .apk-note {
+    margin-top: 16px; color: var(--muted); font-size: .8rem;
+  }
+
+  /* ── Footer ── */
+  footer {
+    position: relative; z-index: 1;
+    text-align: center; padding: 28px 5%;
+    border-top: 1px solid var(--border);
+    color: var(--muted); font-size: .85rem;
+  }
+  footer a { color: var(--purple2); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  /* ── Divider ── */
+  .divider {
+    height: 1px; background: var(--border);
+    max-width: 1100px; margin: 0 auto;
+    position: relative; z-index: 1;
+  }
+
+  /* ── Responsive ── */
+  @media(max-width: 600px) {
+    .hero-cta { flex-direction: column; align-items: center; }
+    .btn-primary, .btn-secondary { width: 100%; max-width: 320px; justify-content: center; }
+    .download-box { padding: 36px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Background orbs -->
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+
+<!-- Nav -->
+<nav>
+  <a class="nav-logo" href="#">
+    <div class="icon">
+      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    </div>
+    <span>SortTube</span>
+  </a>
+  <button class="lang-btn" onclick="toggleLang()" id="langBtn">العربية</button>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-badge">
+    <span></span>
+    <span id="badge-text">Now Available — Free Download</span>
+  </div>
+  <h1 id="hero-title">
+    Organize your<br/>
+    <span class="accent">YouTube</span> <span class="accent2">subscriptions</span>
+  </h1>
+  <p class="hero-sub" id="hero-sub">
+    Stop scrolling through hundreds of subscriptions. SortTube lets you create custom folders, import your channels, and find what you want — instantly.
+  </p>
+  <div class="hero-cta">
+    <a class="btn-primary" href="https://github.com/qurashi512/SortTube/releases/download/v1.0.0/SortTube.apk" id="download-btn">
+      <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zm7-18L5.33 9h3.84v4h5.66V9h3.84L12 2z"/></svg>
+      <span id="download-text">Download APK</span>
+    </a>
+    <a class="btn-secondary" href="https://github.com/qurashi512/SortTube" target="_blank" id="github-btn">
+      <svg viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"/></svg>
+      <span id="github-text">View on GitHub</span>
+    </a>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Features -->
+<section class="section">
+  <div class="section-label">
+    <h2 id="feat-title">Everything you need</h2>
+    <p id="feat-sub">Powerful features, simple interface</p>
+  </div>
+  <div class="features-grid">
+    <div class="feat-card">
+      <div class="feat-icon" style="background:rgba(255,43,43,.15)">📁</div>
+      <h3 id="f1-title">Custom Folders</h3>
+      <p id="f1-desc">Create folders with custom names, emojis and colors. Organize channels exactly the way you think.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon" style="background:rgba(92,59,206,.15)">🔗</div>
+      <h3 id="f2-title">Google Import</h3>
+      <p id="f2-desc">Sign in with Google and import all your YouTube subscriptions with one tap. No manual entry needed.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon" style="background:rgba(123,92,245,.15)">↕️</div>
+      <h3 id="f3-title">Drag & Reorder</h3>
+      <p id="f3-desc">Long-press any folder or channel to drag and reorder. Your layout, your rules.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon" style="background:rgba(255,43,43,.15)">📺</div>
+      <h3 id="f4-title">All Channels View</h3>
+      <p id="f4-desc">A smart virtual folder that always shows every channel you've added — regardless of which folder they're in.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon" style="background:rgba(92,59,206,.15)">🌙</div>
+      <h3 id="f5-title">Theme Support</h3>
+      <p id="f5-desc">Dark, Light, or follow your system theme. Looks great either way.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon" style="background:rgba(123,92,245,.15)">🌐</div>
+      <h3 id="f6-title">Arabic & English</h3>
+      <p id="f6-desc">Full support for Arabic and English with automatic system language detection.</p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Download -->
+<section class="download-section">
+  <div class="download-box">
+    <h2 id="dl-title">Ready to sort your YouTube?</h2>
+    <p id="dl-sub">Free. No ads. Open source.</p>
+    <a class="btn-primary" style="display:inline-flex;margin:0 auto;" href="https://github.com/qurashi512/SortTube/releases/download/v1.0.0/SortTube.apk">
+      <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zm7-18L5.33 9h3.84v4h5.66V9h3.84L12 2z"/></svg>
+      <span id="dl-btn-text">Download APK — v1.0.0</span>
+    </a>
+    <p class="apk-note" id="dl-note">Android only · Enable "Install from unknown sources" before installing</p>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <p id="footer-text">
+    Crafted with ❤️ by <strong>Gorashe</strong> ·
+    <a href="https://github.com/qurashi512/SortTube" target="_blank">GitHub</a>
+  </p>
+</footer>
+
+<script>
+  const strings = {
+    en: {
+      dir: 'ltr', lang: 'en',
+      badgeText: 'Now Available — Free Download',
+      heroTitle: 'Organize your<br/><span class="accent">YouTube</span> <span class="accent2">subscriptions</span>',
+      heroSub: 'Stop scrolling through hundreds of subscriptions. SortTube lets you create custom folders, import your channels, and find what you want — instantly.',
+      downloadText: 'Download APK',
+      githubText: 'View on GitHub',
+      featTitle: 'Everything you need',
+      featSub: 'Powerful features, simple interface',
+      f1Title: 'Custom Folders', f1Desc: 'Create folders with custom names, emojis and colors. Organize channels exactly the way you think.',
+      f2Title: 'Google Import', f2Desc: 'Sign in with Google and import all your YouTube subscriptions with one tap. No manual entry needed.',
+      f3Title: 'Drag & Reorder', f3Desc: 'Long-press any folder or channel to drag and reorder. Your layout, your rules.',
+      f4Title: 'All Channels View', f4Desc: 'A smart virtual folder that always shows every channel you\'ve added — regardless of which folder they\'re in.',
+      f5Title: 'Theme Support', f5Desc: 'Dark, Light, or follow your system theme. Looks great either way.',
+      f6Title: 'Arabic & English', f6Desc: 'Full support for Arabic and English with automatic system language detection.',
+      dlTitle: 'Ready to sort your YouTube?',
+      dlSub: 'Free. No ads. Open source.',
+      dlBtnText: 'Download APK — v1.0.0',
+      dlNote: 'Android only · Enable "Install from unknown sources" before installing',
+      footerText: 'Crafted with ❤️ by <strong>Gorashe</strong> · <a href="https://github.com/qurashi512/SortTube" target="_blank">GitHub</a>',
+      langBtn: 'العربية',
+    },
+    ar: {
+      dir: 'rtl', lang: 'ar',
+      badgeText: 'متاح الآن — تحميل مجاني',
+      heroTitle: 'نظّم اشتراكاتك على<br/><span class="accent">يوتيوب</span> <span class="accent2">بسهولة</span>',
+      heroSub: 'توقف عن التمرير بين مئات الاشتراكات. SortTube يخليك تنشئ مجلدات مخصصة، وتستورد قنواتك، وتلقى اللي تبيه فوراً.',
+      downloadText: 'تحميل التطبيق',
+      githubText: 'عرض على GitHub',
+      featTitle: 'كل اللي تحتاجه',
+      featSub: 'مميزات قوية، واجهة بسيطة',
+      f1Title: 'مجلدات مخصصة', f1Desc: 'أنشئ مجلدات بأسماء وإيموجي وألوان من اختيارك. نظّم قنواتك بالطريقة اللي تناسبك.',
+      f2Title: 'استيراد من Google', f2Desc: 'سجّل دخول بحسابك واستورد كل اشتراكاتك في يوتيوب بضغطة واحدة. بدون إدخال يدوي.',
+      f3Title: 'سحب وإعادة ترتيب', f3Desc: 'اضغط مطولاً على أي مجلد أو قناة لسحبها وإعادة ترتيبها. أنت من يتحكم.',
+      f4Title: 'مجلد جميع القنوات', f4Desc: 'مجلد افتراضي ذكي يعرض دائماً كل قنواتك بغض النظر عن المجلد الموجودة فيه.',
+      f5Title: 'دعم المظاهر', f5Desc: 'داكن، فاتح، أو تلقائي مع نظام جهازك. يبدو رائعاً في كل الأحوال.',
+      f6Title: 'عربي وإنجليزي', f6Desc: 'دعم كامل للغتين مع كشف تلقائي للغة الجهاز.',
+      dlTitle: 'جاهز تنظّم يوتيوب؟',
+      dlSub: 'مجاني. بدون إعلانات. مفتوح المصدر.',
+      dlBtnText: 'تحميل APK — v1.0.0',
+      dlNote: 'Android فقط · فعّل "تثبيت من مصادر غير معروفة" قبل التثبيت',
+      footerText: 'صُنع بـ ❤️ بواسطة <strong>Gorashe</strong> · <a href="https://github.com/qurashi512/SortTube" target="_blank">GitHub</a>',
+      langBtn: 'English',
+    }
+  };
+
+  let current = 'en';
+
+  function apply(lang) {
+    const s = strings[lang];
+    document.documentElement.lang = s.lang;
+    document.documentElement.dir  = s.dir;
+    document.body.setAttribute('dir', s.dir);
+    document.getElementById('badge-text').textContent = s.badgeText;
+    document.getElementById('hero-title').innerHTML   = s.heroTitle;
+    document.getElementById('hero-sub').textContent   = s.heroSub;
+    document.getElementById('download-text').textContent = s.downloadText;
+    document.getElementById('github-text').textContent   = s.githubText;
+    document.getElementById('feat-title').textContent = s.featTitle;
+    document.getElementById('feat-sub').textContent   = s.featSub;
+    document.getElementById('f1-title').textContent = s.f1Title; document.getElementById('f1-desc').textContent = s.f1Desc;
+    document.getElementById('f2-title').textContent = s.f2Title; document.getElementById('f2-desc').textContent = s.f2Desc;
+    document.getElementById('f3-title').textContent = s.f3Title; document.getElementById('f3-desc').textContent = s.f3Desc;
+    document.getElementById('f4-title').textContent = s.f4Title; document.getElementById('f4-desc').textContent = s.f4Desc;
+    document.getElementById('f5-title').textContent = s.f5Title; document.getElementById('f5-desc').textContent = s.f5Desc;
+    document.getElementById('f6-title').textContent = s.f6Title; document.getElementById('f6-desc').textContent = s.f6Desc;
+    document.getElementById('dl-title').textContent   = s.dlTitle;
+    document.getElementById('dl-sub').textContent     = s.dlSub;
+    document.getElementById('dl-btn-text').textContent = s.dlBtnText;
+    document.getElementById('dl-note').textContent    = s.dlNote;
+    document.getElementById('footer-text').innerHTML  = s.footerText;
+    document.getElementById('langBtn').textContent    = s.langBtn;
+  }
+
+  function toggleLang() {
+    current = current === 'en' ? 'ar' : 'en';
+    apply(current);
+  }
+
+  // Auto-detect browser language
+  const browserLang = navigator.language || navigator.userLanguage;
+  if (browserLang.startsWith('ar')) { current = 'ar'; apply('ar'); }
+</script>
+</body>
+</html>
