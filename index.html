@@ -94,6 +94,8 @@
     color: var(--red2); padding: 6px 16px; border-radius: 30px;
     font-size: .8rem; font-weight: 500; margin-bottom: 28px;
     animation: fadeUp .8s ease both;
+    white-space: nowrap; 
+    position: relative; z-index: 2;
   }
   .hero-badge span { width: 6px; height: 6px; background: var(--red); border-radius: 50%; display: inline-block; animation: pulse 2s infinite; }
 
@@ -101,9 +103,10 @@
 
   .hero h1 {
     font-family: 'Syne', sans-serif; font-weight: 800;
-    font-size: clamp(2.8rem, 7vw, 5.5rem);
+    font-size: clamp(1.8rem, 8vw, 5.5rem); 
     line-height: 1.05; letter-spacing: -2px;
     animation: fadeUp .9s .1s ease both;
+    overflow-wrap: break-word; 
   }
   body[dir="rtl"] .hero h1 { font-family: 'Tajawal', sans-serif; letter-spacing: 0; }
 
