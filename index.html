@@ -97,8 +97,12 @@
     white-space: nowrap; 
     position: relative; z-index: 2;
   }
-  .hero-badge span { width: 6px; height: 6px; background: var(--red); border-radius: 50%; display: inline-block; animation: pulse 2s infinite; }
-
+  .hero-badge span:first-child { 
+  width: 6px; height: 6px; background: var(--red); 
+  border-radius: 50%; display: inline-block; 
+  animation: pulse 2s infinite; 
+}
+.
   @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.4)} }
 
   .hero h1 {
