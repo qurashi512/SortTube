@@ -64,6 +64,7 @@
     color: var(--text); padding: 8px 18px; border-radius: 30px;
     cursor: pointer; font-size: .9rem; text-decoration: none; transition: all .2s;
     font-family: inherit;
+    white-space: nowrap; /* يمنع انقسام الكلمة لسطرين */
   }
   .back-btn:hover { background: var(--purple); border-color: var(--purple2); }
 
@@ -202,7 +203,7 @@
       p4: 'SortTube uses YouTube API Services. By using this app, you agree to be bound by the <a href="https://www.youtube.com/t/terms" target="_blank" class="link">YouTube Terms of Service</a> and the <a href="http://www.google.com/policies/privacy" target="_blank" class="link">Google Privacy Policy</a>.',
       h5: '5. Contact Us',
       p5: 'If you have any questions or suggestions about our Privacy Policy, do not hesitate to contact us at:<br><a href="mailto:griezmannqurashi@gmail.com" class="link">griezmannqurashi@gmail.com</a>',
-      footer: 'Crafted with ❤️ by <strong>GriezTech</strong> · <a href="https://github.com/qurashi512/SortTube" target="_blank">GitHub</a>'
+      footer: '<bdi>Crafted with ❤️ by <strong>GriezTech</strong></bdi> · <bdi><a href="https://github.com/qurashi512/SortTube" target="_blank">GitHub</a></bdi>'
     },
     ar: {
       dir: 'rtl', lang: 'ar',
@@ -224,6 +225,7 @@
       h5: '5. اتصل بنا',
       p5: 'إذا كانت لديك أي أسئلة أو اقتراحات حول سياسة الخصوصية، فلا تتردد في التواصل معنا عبر:<br><a href="mailto:griezmannqurashi@gmail.com" class="link">griezmannqurashi@gmail.com</a>',
       footer: '<bdi>صُنع بـ ❤️ بواسطة <strong>GriezTech</strong></bdi> · <bdi><a href="https://github.com/qurashi512/SortTube" target="_blank">GitHub</a></bdi>'
+    }
   };
 
   let current = 'en';
@@ -256,7 +258,7 @@
 
   function toggleLang() {
     current = current === 'en' ? 'ar' : 'en';
-    localStorage.setItem('sortTubeLang', current); // حفظ اللغة في ذاكرة المتصفح
+    localStorage.setItem('sortTubeLang', current);
     apply(current);
   }
 
