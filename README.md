@@ -1,4 +1,3 @@
-[Privacy Policy](https://qurashi512.github.io/SortTube/PRIVACY_POLICY.md)
 # 🚀 SortTube - Smart YouTube Organizer
 
 **SortTube** is a professional Android application designed to help users manage their YouTube subscriptions efficiently. Instead of a messy subscription feed, users can categorize their favorite channels and playlists into beautifully designed custom folders.
