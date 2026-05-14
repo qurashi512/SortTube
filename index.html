@@ -5,8 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>SortTube — Organize your YouTube</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
+  @font-face {
+    font-family: 'Thmanyah Sans';
+    src: url('fonts/thmanyahsans-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Thmanyah Sans';
+    src: url('fonts/thmanyahsans-Bold.woff2') format('woff2');
+    font-weight: 700 800;
+    font-display: swap;
+  }
+
   :root {
     --bg:        #0d0b1e;
     --bg2:       #130f2a;
@@ -32,7 +45,7 @@
     overflow-x: hidden;
   }
 
-  body[dir="rtl"] { font-family: 'Tajawal', sans-serif; }
+  body[dir="rtl"] { font-family: 'Thmanyah Sans', sans-serif; }
 
   /* ── Orbs ── */
   .orb {
@@ -71,7 +84,7 @@
   .nav-logo span {
     font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.2rem; color: var(--text);
   }
-  body[dir="rtl"] .nav-logo span { font-family: 'Tajawal', sans-serif; }
+  body[dir="rtl"] .nav-logo span { font-family: 'Thmanyah Sans', sans-serif; }
 
   .lang-btn {
     background: var(--card); border: 1px solid var(--border);
@@ -115,7 +128,7 @@
     animation: fadeUp .9s .1s ease both;
     overflow-wrap: break-word; 
   }
-  body[dir="rtl"] .hero h1 { font-family: 'Tajawal', sans-serif; letter-spacing: 0; }
+  body[dir="rtl"] .hero h1 { font-family: 'Thmanyah Sans', sans-serif; letter-spacing: 0; }
 
   .hero h1 .accent { color: var(--red); }
   .hero h1 .accent2 { color: var(--purple2); }
@@ -167,7 +180,7 @@
     font-family: 'Syne', sans-serif; font-weight: 800;
     font-size: clamp(1.8rem, 4vw, 2.8rem); letter-spacing: -1px;
   }
-  body[dir="rtl"] .section-label h2 { font-family: 'Tajawal', sans-serif; letter-spacing: 0; }
+  body[dir="rtl"] .section-label h2 { font-family: 'Thmanyah Sans', sans-serif; letter-spacing: 0; }
   .section-label p { color: var(--muted); margin-top: 10px; font-size: 1rem; }
 
   .features-grid {
@@ -200,7 +213,7 @@
   .feat-card h3 {
     font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.05rem; margin-bottom: 8px;
   }
-  body[dir="rtl"] .feat-card h3 { font-family: 'Tajawal', sans-serif; }
+  body[dir="rtl"] .feat-card h3 { font-family: 'Thmanyah Sans', sans-serif; }
   .feat-card p { color: var(--muted); font-size: .9rem; line-height: 1.6; }
 
   /* ── Download ── */
@@ -228,7 +241,7 @@
     font-family: 'Syne', sans-serif; font-weight: 800;
     font-size: clamp(1.6rem, 4vw, 2.4rem); margin-bottom: 12px; letter-spacing: -1px;
   }
-  body[dir="rtl"] .download-box h2 { font-family: 'Tajawal', sans-serif; letter-spacing: 0; }
+  body[dir="rtl"] .download-box h2 { font-family: 'Thmanyah Sans', sans-serif; letter-spacing: 0; }
   .download-box p { color: var(--muted); margin-bottom: 32px; font-size: 1rem; }
 
   .apk-note {
