@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Terms of Service — SortTube</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;700&family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:        #0d0b1e;
+    --bg2:       #130f2a;
+    --purple:    #5c3bce;
+    --purple2:   #7b5cf5;
+    --red:       #ff2b2b;
+    --text:      #f0ecff;
+    --muted:     #8b82b0;
+    --card:      rgba(255,255,255,0.04);
+    --border:    rgba(255,255,255,0.08);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    line-height: 1.7;
+  }
+
+  body[dir="rtl"] { font-family: 'Tajawal', sans-serif; }
+
+  /* ── Orbs ── */
+  .orb {
+    position: fixed; border-radius: 50%; filter: blur(90px);
+    opacity: .35; pointer-events: none; z-index: 0;
+  }
+  .orb1 { width: 500px; height: 500px; background: var(--purple); top: -200px; right: -100px; }
+  .orb2 { width: 400px; height: 400px; background: var(--red); bottom: -100px; left: -100px; opacity: .15; }
+
+  /* ── Nav ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 5%;
+    background: rgba(13,11,30,.8);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+
+  .nav-logo .app-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    object-fit: cover;
+  }
+
+  .nav-logo span { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.2rem; color: var(--text); }
+  body[dir="rtl"] .nav-logo span { font-family: 'Tajawal', sans-serif; }
+
+  .back-btn {
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--text); padding: 8px 18px; border-radius: 30px;
+    cursor: pointer; font-size: .9rem; text-decoration: none; transition: all .2s;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  .back-btn:hover { background: var(--purple); border-color: var(--purple2); }
+
+  /* ── Content Container ── */
+  .container {
+    position: relative; z-index: 1;
+    max-width: 800px; margin: 120px auto 80px;
+    padding: 50px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    backdrop-filter: blur(10px);
+  }
+
+  .badge {
+    display: inline-block;
+    background: rgba(123,92,245,.15); color: var(--purple2);
+    padding: 6px 14px; border-radius: 20px;
+    font-size: .85rem; font-weight: 700; margin-bottom: 20px;
+  }
+
+  h1 { font-family: 'Syne', sans-serif; font-size: 2.5rem; margin-bottom: 20px; line-height: 1.2; }
+  body[dir="rtl"] h1 { font-family: 'Tajawal', sans-serif; font-weight: 800; }
+  h1 .accent { color: var(--red); }
+
+  h2 { font-family: 'Syne', sans-serif; font-size: 1.4rem; color: #fff; margin: 40px 0 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+  body[dir="rtl"] h2 { font-family: 'Tajawal', sans-serif; font-weight: 700; }
+
+  p { color: var(--muted); margin-bottom: 15px; }
+
+  a.link { color: var(--purple2); text-decoration: none; font-weight: 500; transition: color .2s; }
+  a.link:hover { color: #fff; text-decoration: underline; }
+
+  /* ── Footer ── */
+  footer {
+    position: relative; z-index: 1;
+    text-align: center; padding: 28px 5%;
+    border-top: 1px solid var(--border);
+    color: var(--muted); font-size: .85rem;
+  }
+  footer a { color: var(--purple2); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  @media(max-width: 600px) {
+    .container { margin: 100px 20px 60px; padding: 30px 20px; }
+    h1 { font-size: 2rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+
+<nav>
+  <a class="nav-logo" href="index.html">
+    <img src="logo.png" class="app-icon" alt="SortTube Logo">
+    <span>SortTube</span>
+  </a>
+  <div style="display: flex; gap: 10px;">
+    <a href="index.html" class="back-btn" id="nav-back">← Back</a>
+    <button class="back-btn" onclick="toggleLang()" id="langBtn">العربية</button>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="badge" id="tos-date">Last updated: May 14, 2026</div>
+
+  <h1 id="tos-title">Terms of Service for <span class="accent">SortTube</span></h1>
+
+  <p id="tos-intro">By downloading, installing, or using SortTube, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use the application.</p>
+
+  <h2 id="tos-h1">1. Acceptance of Terms</h2>
+  <p id="tos-p1">By accessing or using SortTube in any way, you confirm that you have read, understood, and agree to these Terms of Service. These terms apply to all users of the application.</p>
+
+  <h2 id="tos-h2">2. YouTube API Services</h2>
+  <p id="tos-p2">SortTube uses YouTube API Services to provide its core functionality. By using our application, you explicitly agree to be bound by the <a href="https://www.youtube.com/t/terms" target="_blank" class="link">YouTube Terms of Service</a> and acknowledge the <a href="http://www.google.com/policies/privacy" target="_blank" class="link">Google Privacy Policy</a>.</p>
+
+  <h2 id="tos-h3">3. Privacy and Data Storage</h2>
+  <p id="tos-p3">SortTube respects your privacy. All your customization data, including custom folders and emojis, is stored locally on your device. We do not transmit or store your personal YouTube data on any external servers. For more details, please review our <a href="PRIVACY_POLICY.html" class="link">Privacy Policy</a>.</p>
+
+  <h2 id="tos-h4">4. Open Source and "As Is"</h2>
+  <p id="tos-p4">SortTube is a free, open-source application provided "as is" and "as available" without any warranties of any kind. GriezTech is not responsible for any data loss, device issues, or service interruptions.</p>
+
+  <h2 id="tos-h5">5. Changes to Terms</h2>
+  <p id="tos-p5">We reserve the right to modify or replace these Terms at any time. Your continued use of the app after any changes constitutes acceptance of the new Terms.</p>
+
+  <h2 id="tos-h6">6. Contact Us</h2>
+  <p id="tos-p6">If you have any questions about these Terms, please contact us at:<br>
+  <a href="mailto:SortTube.app@outlook.com" class="link">SortTube.app@outlook.com</a></p>
+</div>
+
+<footer>
+  <p id="footer-text">
+    Crafted with ❤️ by <strong>Gorashe</strong> ·
+    <a href="https://github.com/qurashi512/SortTube" target="_blank">GitHub</a> ·
+    <a href="PRIVACY_POLICY.html">Privacy Policy</a>
+  </p>
+</footer>
+
+<script>
+  const strings = {
+    en: {
+      dir: 'ltr', lang: 'en',
+      navBack: '← Back',
+      langBtn: 'العربية',
+      date: 'Last updated: May 14, 2026',
+      title: 'Terms of Service for <span class="accent">SortTube</span>',
+      intro: 'By downloading, installing, or using SortTube, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use the application.',
+      h1: '1. Acceptance of Terms',
+      p1: 'By accessing or using SortTube in any way, you confirm that you have read, understood, and agree to these Terms of Service. These terms apply to all users of the application.',
+      h2: '2. YouTube API Services',
+      p2: 'SortTube uses YouTube API Services to provide its core functionality. By using our application, you explicitly agree to be bound by the <a href="https://www.youtube.com/t/terms" target="_blank" class="link">YouTube Terms of Service</a> and acknowledge the <a href="http://www.google.com/policies/privacy" target="_blank" class="link">Google Privacy Policy</a>.',
+      h3: '3. Privacy and Data Storage',
+      p3: 'SortTube respects your privacy. All your customization data, including custom folders and emojis, is stored locally on your device. We do not transmit or store your personal YouTube data on any external servers. For more details, please review our <a href="PRIVACY_POLICY.html" class="link">Privacy Policy</a>.',
+      h4: '4. Open Source and "As Is"',
+      p4: 'SortTube is a free, open-source application provided "as is" and "as available" without any warranties of any kind. GriezTech is not responsible for any data loss, device issues, or service interruptions.',
+      h5: '5. Changes to Terms',
+      p5: 'We reserve the right to modify or replace these Terms at any time. Your continued use of the app after any changes constitutes acceptance of the new Terms.',
+      h6: '6. Contact Us',
+      p6: 'If you have any questions about these Terms, please contact us at:<br><a href="mailto:SortTube.app@outlook.com" class="link">SortTube.app@outlook.com</a>',
+      footer: '<bdi>Crafted with ❤️ by <strong>Gorashe</strong></bdi> · <bdi><a href="https://github.com/qurashi512/SortTube" target="_blank">GitHub</a></bdi> · <bdi><a href="PRIVACY_POLICY.html">Privacy Policy</a></bdi>'
+    },
+    ar: {
+      dir: 'rtl', lang: 'ar',
+      navBack: 'العودة →',
+      langBtn: 'English',
+      date: 'آخر تحديث: 14 مايو 2026',
+      title: 'شروط الخدمة لتطبيق <span class="accent">SortTube</span>',
+      intro: 'بتنزيلك أو تثبيتك أو استخدامك لـ SortTube، فإنك توافق على الالتزام بشروط الخدمة هذه. إن كنت لا توافق على هذه الشروط، يُرجى عدم استخدام التطبيق.',
+      h1: '1. قبول الشروط',
+      p1: 'بوصولك إلى SortTube أو استخدامه بأي طريقة، فإنك تؤكد أنك قرأت هذه الشروط وفهمتها ووافقت عليها. تنطبق هذه الشروط على جميع مستخدمي التطبيق.',
+      h2: '2. خدمات YouTube API',
+      p2: 'يستخدم SortTube خدمات واجهة برمجة تطبيقات يوتيوب لتوفير وظائفه الأساسية. باستخدامك لتطبيقنا، فإنك توافق صراحةً على الالتزام بـ <a href="https://www.youtube.com/t/terms" target="_blank" class="link">شروط خدمة يوتيوب</a> وتُقرّ بـ <a href="http://www.google.com/policies/privacy" target="_blank" class="link">سياسة خصوصية Google</a>.',
+      h3: '3. الخصوصية وتخزين البيانات',
+      p3: 'يحترم SortTube خصوصيتك. جميع بيانات التخصيص الخاصة بك، بما فيها المجلدات المخصصة والرموز التعبيرية، تُخزَّن محليًا على جهازك فقط. نحن لا نُرسل أو نخزّن بيانات يوتيوب الشخصية على أي خوادم خارجية. للمزيد من التفاصيل، يُرجى مراجعة <a href="PRIVACY_POLICY.html" class="link">سياسة الخصوصية</a> الخاصة بنا.',
+      h4: '4. مفتوح المصدر و"كما هو"',
+      p4: 'SortTube تطبيق مجاني ومفتوح المصدر يُقدَّم "كما هو" و"كما هو متاح" دون أي ضمانات من أي نوع. لا تتحمل GriezTech المسؤولية عن أي فقدان للبيانات أو مشاكل في الجهاز أو انقطاعات في الخدمة.',
+      h5: '5. التغييرات على الشروط',
+      p5: 'نحتفظ بالحق في تعديل هذه الشروط أو استبدالها في أي وقت. استمرارك في استخدام التطبيق بعد أي تغييرات يُعدّ قبولًا للشروط الجديدة.',
+      h6: '6. اتصل بنا',
+      p6: 'إذا كانت لديك أي أسئلة حول هذه الشروط، يُرجى التواصل معنا عبر:<br><a href="mailto:SortTube.app@outlook.com" class="link">SortTube.app@outlook.com</a>',
+      footer: '<bdi>صُنع بـ ❤️ بواسطة <strong>قرشي</strong></bdi> · <bdi><a href="https://github.com/qurashi512/SortTube" target="_blank">GitHub</a></bdi> · <bdi><a href="PRIVACY_POLICY.html">سياسة الخصوصية</a></bdi>'
+    }
+  };
+
+  let current = 'en';
+
+  function apply(lang) {
+    const s = strings[lang];
+    document.documentElement.lang = s.lang;
+    document.documentElement.dir  = s.dir;
+    document.body.setAttribute('dir', s.dir);
+
+    document.getElementById('nav-back').textContent = s.navBack;
+    document.getElementById('langBtn').textContent  = s.langBtn;
+    document.getElementById('tos-date').textContent = s.date;
+    document.getElementById('tos-title').innerHTML  = s.title;
+    document.getElementById('tos-intro').textContent = s.intro;
+    document.getElementById('tos-h1').textContent = s.h1;
+    document.getElementById('tos-p1').textContent = s.p1;
+    document.getElementById('tos-h2').textContent = s.h2;
+    document.getElementById('tos-p2').innerHTML   = s.p2;
+    document.getElementById('tos-h3').textContent = s.h3;
+    document.getElementById('tos-p3').innerHTML   = s.p3;
+    document.getElementById('tos-h4').textContent = s.h4;
+    document.getElementById('tos-p4').textContent = s.p4;
+    document.getElementById('tos-h5').textContent = s.h5;
+    document.getElementById('tos-p5').textContent = s.p5;
+    document.getElementById('tos-h6').textContent = s.h6;
+    document.getElementById('tos-p6').innerHTML   = s.p6;
+    document.getElementById('footer-text').innerHTML = s.footer;
+  }
+
+  function toggleLang() {
+    current = current === 'en' ? 'ar' : 'en';
+    localStorage.setItem('sortTubeLang', current);
+    apply(current);
+  }
+
+  const savedLang = localStorage.getItem('sortTubeLang');
+  if (savedLang) {
+    current = savedLang;
+  } else {
+    const browserLang = navigator.language || navigator.userLanguage;
+    if (browserLang.startsWith('ar')) { current = 'ar'; }
+  }
+  apply(current);
+</script>
+</body>
+</html>
